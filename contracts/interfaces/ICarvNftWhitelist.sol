@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.20;
 
-interface ICarvNft {
+interface ICarvNftWhitelist {
 
     /**
      * @notice This struct represents information When users redeem NFT by CARV payment,
@@ -28,12 +28,13 @@ interface ICarvNft {
     event ClaimBatch(uint256[] tokenIDs, uint256 claimAmount);
 
     /**
-     * @notice mint nft.
+     * @notice mint nft (only address in whitelist).
+     * @notice use merkle proof to check whitelist.
      * @notice tokens paid by minters are stored in the vault contract
      * @notice totalSupply 100,000
      * @dev Emits `Mint`.
      */
-    function mint() external;
+    function mint(uint256 index, bytes32[] calldata merkleProof) external;
 
     /**
      * @notice To redeem NFT, the following conditions need to be met:
@@ -67,4 +68,6 @@ interface ICarvNft {
      * @param tokenIDs: TokenIDs needed to receive redemption reward by CARVs
      */
     function claimBatch(uint256[] calldata tokenIDs) external;
+
+    function isMinted(uint256 index) external view returns (bool);
 }

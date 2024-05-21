@@ -16,34 +16,36 @@ interface IProtocolService {
      *        it calls `nodeEnter` for the first time. Up to 65535 nodes can be registered.
      * `listIndex`: The position of the node in the current `activeVrfNodeList`
      * `active`: Is the node active?
-     * `pendingVerifyCount`: The number of verifications that the node has not yet confirmed.
+     * `lastConfirmDate`: The date on which reward was last confirmed.
      * `missedVerifyCount`: The number of verifications the node currently misses
-     * `confirmedVerifyCount`: The number of verifications that the node has confirmed
-     * `claimedVerifyCount`: The number of verifications the node has claimed.
+     * `selfTotalRewards`: The total rewards of the node itself
+     * `selfClaimedRewards`: The rewards claimed by the node itself
+     * `delegationRewards`: The rewards of the node’s delegator
      * `lastEnterTime`: The time when the node last called `nodeEnter` to go online
      */
     struct NodeInfo {
         uint16 id;
         uint16 listIndex;
         bool active;
-        uint64 pendingVerifyCount;
+        uint32 lastConfirmDate;
         uint64 missedVerifyCount;
-        uint64 confirmedVerifyCount;
-        uint64 claimedVerifyCount;
+        int256 selfTotalRewards;
+        uint256 selfClaimedRewards;
+        uint256 delegationRewards;
         uint256 lastEnterTime;
     }
 
     /**
      * @notice This struct represents reward information of a CarvNft token
      *
-     * `initialVerifyCount`: When this tokenID is delegated to a node, the initial number of verifications needs to be recorded.
-     * `confirmedVerifyCount`: The number of verification times this tokenID has been confirmed
-     * `claimedVerifyCount`: The number of verification times this tokenID has been claimed
+     * `initialRewards`: When this tokenID is delegated to a node, the initial amount of delegator's rewards needs to be recorded.
+     * `totalRewards`: The amount of rewards this tokenID has been confirmed
+     * `claimedRewards`: The amount of rewards this tokenID has been claimed
      */
     struct TokenRewardInfo {
-        uint64 initialVerifyCount;
-        uint64 confirmedVerifyCount;
-        uint64 claimedVerifyCount;
+        uint256 initialRewards;
+        uint256 totalRewards;
+        uint256 claimedRewards;
     }
 
     /**
@@ -98,6 +100,7 @@ interface IProtocolService {
     event TeeStake(address tee, uint256 amount);
     event TeeUnstake(address tee, uint256 amount);
     event TeeSlash(address tee, bytes32 attestationID, uint256 amount);
+    event ClaimMaliciousTeeRewards(address verifer, uint256 amount);
     event TeeReportAttestation(address tee, bytes32 attestationID, uint256 requestID, string attestation);
     event ConfirmVrfNodes(uint256 requestId, uint16[] vrfChosen, uint256 deadline);
 
@@ -129,6 +132,7 @@ interface IProtocolService {
 
     /**
      * @notice Tee needs to stake CARVs before reporting attestation,
+     * @notice and CARVs will be converted to veCARVs stored in Vault.
      * @notice which will be used to slash when tee proven to be evil.
      *
      * @dev Only tee role (granted by admin role).
@@ -139,9 +143,9 @@ interface IProtocolService {
     function teeStake(uint256 amount) external;
 
     /**
-     * @notice Tee withdraws staked CARVs, rules are as follows:
+     * @notice Tee withdraws staked veCARVs, rules are as follows:
      * @notice 1. enough time has passed since the last attestation was submitted.
-     * @notice 2. CARVs that have been slashed cannot be unstaked.
+     * @notice 2. veCARVs that have been slashed cannot be unstaked.
      * @notice 3. unable to continue reporting attestation after unstaking.
      *
      * @dev Only tee role (granted by admin role).
@@ -151,9 +155,9 @@ interface IProtocolService {
 
     /**
      * @notice When the attestation reported by a tee is proven to be malicious,
-     * @notice anyone can initiate a teeSlash, which will slash the CARVs staked by the tee.
+     * @notice anyone can initiate a teeSlash, which will slash the veCARVs staked by the tee.
      * @notice Each malicious attestation can only be slashed once.
-     * @notice When the CARVs staked by a tee are slashed below a threshold,
+     * @notice When the veCARVs staked by a tee are slashed below a threshold,
      * @notice the tee will be forcibly restricted from continuing to report attestation.
      *
      * @dev Emits `TeeSlash`.
@@ -162,6 +166,17 @@ interface IProtocolService {
      * @param attestationID: id of attestation which is proven malicious.
      */
     function teeSlash(address tee, bytes32 attestationID) external;
+
+    /**
+     * @notice When an attestation reported by a tee is slashed,
+     * @notice verifiers that have reported verification for this attestation can claim the reward.
+     * @notice If a verifier have not reported verification of this attestation, it cannot claim the reward.
+     *
+     * @dev Emits `ClaimMaliciousTeeRewards`.
+     *
+     * @param attestationID: id of attestation which is slashed.
+     */
+    function claimMaliciousTeeRewards(bytes32 attestationID) external;
 
     /**
      * @notice Tee reports attestation. The same attestation can only be reported once.
@@ -243,6 +258,12 @@ interface IProtocolService {
      * @param result: Whether the attestation is valid after being checked by the node.
      */
     function nodeReportVerification(bytes32 attestationID, uint16 index, AttestationResult result) external;
+
+    /**
+     * @notice If the node is online but hasn't reported verification that day,
+     * @notice the smart contract needs to be notified through this function to update the status of the node today.
+     */
+    function nodeReportDailyActive() external;
 
     /**
      * @notice If the NFT holder doesn't want to run the node to report the verification himself,

@@ -43,7 +43,7 @@ contract veCarvToken is IveCarv, ERC20 {
 
     function withdraw(uint256 amount) external {
         // A ONE CARV fee will be charged when withdrawing
-        require(amount > ONE, "must more than 1 veCARV");
+        require(amount > ONE, "Must more than 1 veCARV");
         _transfer(msg.sender, address(this), amount);
 
         withdrawIndex++;
@@ -55,8 +55,8 @@ contract veCarvToken is IveCarv, ERC20 {
     function cancelWithdraw(uint64 withdrawID) external {
         WithdrawInfo storage info = withdrawInfos[withdrawID];
 
-        require(info.withdrawer == msg.sender, "wrong withdrawer");
-        require(!info.canceledOrClaimed, "already canceled or claimed");
+        require(info.withdrawer == msg.sender, "Wrong withdrawer");
+        require(!info.canceledOrClaimed, "Already canceled or claimed");
 
         info.canceledOrClaimed = true;
 
@@ -101,8 +101,8 @@ contract veCarvToken is IveCarv, ERC20 {
     function _claim(uint64 withdrawID) internal returns (uint256 claimAmount, uint256 cannotClaimAmount) {
         WithdrawInfo storage info = withdrawInfos[withdrawID];
 
-        require(info.withdrawer == msg.sender, "not withdrawer");
-        require(!info.canceledOrClaimed, "already canceled or claimed");
+        require(info.withdrawer == msg.sender, "Not withdrawer");
+        require(!info.canceledOrClaimed, "Already canceled or claimed");
 
         info.canceledOrClaimed = true;
 
@@ -126,7 +126,7 @@ contract veCarvToken is IveCarv, ERC20 {
     }
 
     modifier onlyVault() {
-        require(vault == msg.sender, "only vault can transfer");
+        require(vault == msg.sender, "Only vault can transfer");
         _;
     }
 }

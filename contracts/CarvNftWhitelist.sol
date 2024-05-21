@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./interfaces/ICarvNft.sol";
+import "./interfaces/ICarvNftWhitelist.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IProtocolService.sol";
 
-contract CarvNft is ICarvNft, ERC721 {
+contract CarvNftWhitelist is ICarvNftWhitelist, ERC721 {
     using SafeERC20 for IERC20;
 
     uint256 constant REDEEM_DURATION = 180 days;
@@ -17,18 +18,22 @@ contract CarvNft is ICarvNft, ERC721 {
     string constant NAME = "CarvNft";
     string constant SYMBOL = "CarvNft";
 
+    bytes32 public immutable merkleRoot;
+
     address public vault;
     address public service;
     address public carvToken;
 
     uint256 tokenIndex;
+    mapping(uint256 => uint256) private mintedBitMap;
     mapping(uint256 => uint256) public tokenIDMintedAt;
     mapping(uint256 => ClaimInfo) public claimInfos;
 
-    constructor(address carvToken_, address vault_, address service_) ERC721(NAME, SYMBOL) {
+    constructor(address carvToken_, address vault_, address service_, bytes32 merkleRoot_) ERC721(NAME, SYMBOL) {
         carvToken = carvToken_;
         vault = vault_;
         service = service_;
+        merkleRoot = merkleRoot_;
     }
 
     // receive source token
@@ -48,12 +53,17 @@ contract CarvNft is ICarvNft, ERC721 {
         revert("SafeTransferFrom not allowed");
     }
 
-    function mint() external {
+    function mint(uint256 index, bytes32[] calldata merkleProof) external {
+        require(!isMinted(index), 'Already minted');
         require(tokenIndex < MAX_SUPPLY, "Mint finished");
+
+        bytes32 node = keccak256(abi.encodePacked(index, msg.sender));
+        require(MerkleProof.verify(merkleProof, merkleRoot, node), 'Invalid proof');
 
         tokenIndex++;
         _safeMint(msg.sender, tokenIndex);
         tokenIDMintedAt[tokenIndex] = block.timestamp;
+        _setMinted(index);
 
         emit Mint(msg.sender, tokenIndex);
     }
@@ -108,5 +118,19 @@ contract CarvNft is ICarvNft, ERC721 {
         info.claimed = canBeClaimed;
         toBeClaim += canBeClaimed - info.claimed;
         return toBeClaim;
+    }
+
+    function _setMinted(uint256 index) internal {
+        uint256 mintedWordIndex = index / 256;
+        uint256 mintedBitIndex = index % 256;
+        mintedBitMap[mintedWordIndex] = mintedBitMap[mintedWordIndex] | (1 << mintedBitIndex);
+    }
+
+    function isMinted(uint256 index) public view returns (bool) {
+        uint256 mintedWordIndex = index / 256;
+        uint256 mintedBitIndex = index % 256;
+        uint256 mintedWord = mintedBitMap[mintedWordIndex];
+        uint256 mask = (1 << mintedBitIndex);
+        return mintedWord & mask == mask;
     }
 }

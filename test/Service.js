@@ -18,7 +18,7 @@ describe("Service", function () {
         });
     }
 
-    let carv, veCarv, nft, vault, service, owner, alice, bob, coordinator
+    let carv, veCarv, nft, vault, setting, service, owner, alice, bob, coordinator
 
     beforeEach(async function () {
         [owner, alice, bob] = await ethers.getSigners();
@@ -27,13 +27,15 @@ describe("Service", function () {
         const veCarvToken = await ethers.getContractFactory("veCarvToken");
         const CarvNft = await ethers.getContractFactory("CarvNft");
         const Vault = await ethers.getContractFactory("Vault");
+        const Settings = await ethers.getContractFactory("Settings");
         const ProtocolService = await ethers.getContractFactory("ProtocolService");
         const MockAggregator = await ethers.getContractFactory("Aggregator");
         const MockVRFCoordinator = await ethers.getContractFactory("VRFCoordinator");
 
         const nftAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 4)
         const vaultAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 5)
-        const serviceAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 6)
+        const settingAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 6)
+        const serviceAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 7)
 
         const aggregator = await MockAggregator.deploy();
         coordinator = await MockVRFCoordinator.deploy();
@@ -42,9 +44,22 @@ describe("Service", function () {
         veCarv = await veCarvToken.deploy(carv.address, vaultAddr);
         nft = await CarvNft.deploy(carv.address, vaultAddr, serviceAddr);
         vault = await Vault.deploy(carv.address, veCarv.address);
+        setting = await Settings.deploy();
         service = await ProtocolService.deploy(carv.address, nftAddr, vaultAddr, coordinator.address);
 
         await vault.initialize(owner.address, nftAddr, serviceAddr)
+        await setting.initialize({
+            maxVrfActiveNodes: 2000,
+            nodeMinOnlineDuration: 21600, // 6 hours
+            nodeVerifyDuration: 1800,  // 30 minutes
+            nodeSlashReward: E18(10) ,  // 10 veCARV
+            minTeeStakeAmount: E18(1e5),  // 10,000 CARV
+            teeSlashAmount: E18(100),      // 100 veCARV
+            teeUnstakeDuration: 21600,   // 6 hours
+            nodeMaxMissVerifyCount: 5,
+            commissionRate: 100,       // 1%
+            maxNodeWeights: 100,
+        })
         await service.initialize()
 
         await vault.updateAggregatorAddress(aggregator.address);
@@ -55,11 +70,11 @@ describe("Service", function () {
             callbackGasLimit: 10000,
             nativePayment: true
         })
+        await service.updateSettings(settingAddr)
     })
 
     it("Tee", async function () {
-
-        await carv.transfer(alice.address, E18(1000000))
+        await carv.transfer(alice.address, E18(10000000))
 
         await expect(service.connect(alice).teeStake(E18(1000000))).to.be.reverted;
         await expect(service.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TEE_ROLE")), alice.address)).not.to.be.reverted;
@@ -74,7 +89,6 @@ describe("Service", function () {
         await expect(service.connect(alice).teeReportAttestation("test")).not.to.be.reverted;
         await expect(service.connect(alice).teeUnstake()).to.be.reverted;
         await coordinator.callback(1, [123456789])
-
 
         const hours6 = 6 * 60 * 60;
         await time.increase(hours6);
@@ -153,7 +167,7 @@ describe("Service", function () {
 
     it("Claim", async function () {
 
-        await carv.approve(vault.address, E18(10000000))
+        await carv.approve(vault.address, E18(250000000))
         await vault.rewardsInit()
 
         await nft.connect(alice).mint();
@@ -173,8 +187,17 @@ describe("Service", function () {
         )
 
         await expect(service.connect(alice).nodeClaim()).to.be.reverted
-        const hours6 = 6 * 60 * 60;
-        await time.increase(hours6);
+        const hours8 = 8 * 60 * 60;
+        await time.increase(hours8);
+        await service.connect(alice).nodeReportDailyActive()
+
+        const hours24 = 24 * 60 * 60;
+        await time.increase(hours24);
+        console.log(await service.todayOffset())
+        await service.connect(alice).nodeReportDailyActive()
+        await time.increase(hours24);
+        console.log(await service.todayOffset())
+        await service.connect(alice).nodeReportDailyActive()
         await expect(service.connect(alice).nodeClaim()).not.to.be.reverted
 
         await service.connect(alice).claimRewards(1)

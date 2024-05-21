@@ -5,9 +5,13 @@ interface IVault {
 
     event FoundationWithdraw(address token, uint256 amount);
 
-    event NftDeposit(uint256 value);
+    event NftDeposit(uint256 amount);
 
-    event NftWithdraw(uint256 value, bool withCarv);
+    event NftWithdraw(uint256 amount, bool withCarv);
+
+    event TeeDeposit(uint256 amount);
+
+    event TeeWithdraw(address to, uint256 amount);
 
     event RewardsInit();
 
@@ -48,6 +52,25 @@ interface IVault {
     function nftWithdraw(bool withCarv) external returns (uint256 amount);
 
     /**
+     * @notice Deposit tee staked CARV to Vault contract (convert to veCARV).
+     * @notice Only tee authority can operate
+     *
+     * @dev Emits `TeeDeposit`.
+     */
+    function teeDeposit(uint256 amount) external;
+
+    /**
+     * @notice Called by ProtocolService contract when tee unstakes or verifier claims tee rewards.
+     * @notice transfer veCARV to receiver.
+     *
+     * @dev Emits `TeeWithdraw`.
+     *
+     * @param receiver: address who to receive veCARV.
+     * @param amount: amount of veCARV transferred to receiver.
+     */
+    function teeWithdraw(address receiver, uint256 amount) external;
+
+    /**
      * @notice Rewards account initialization, only foundation authority can operate
      * @notice Deposit all veCARV(CARV -> veCARV) for verification rewards
      * @notice Define token release rules
@@ -77,7 +100,19 @@ interface IVault {
      */
     function changeFoundation(address newFoundation) external;
 
+    /**
+     * @notice Change the address of aggregator.
+     * @notice can only be operated by foundation authority
+     *
+     * @dev Emits `UpdateAggregator`.
+     *
+     * @param carvAggregator_: address of aggregator(carv/eth).
+     */
     function updateAggregatorAddress(address carvAggregator_) external;
 
     function oracle(uint256 ethAmount) external view returns (uint256 carvAmount);
+
+    function startTimestamp() external pure returns (uint256);
+
+    function totalRewardByDate(uint32 dateIndex) external pure returns (uint256);
 }

@@ -9,22 +9,14 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IProtocolService.sol";
+import "./interfaces/ISettings.sol";
 import "./interfaces/IVault.sol";
 
 contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsumerBaseV2Plus {
     using SafeERC20 for IERC20;
 
     bytes32 public constant TEE_ROLE = keccak256("TEE_ROLE");
-    uint256 public constant MAX_VRF_ACTIVE_NODES = 2000;
-    uint256 public constant NODE_MIN_ONLINE_DURATION = 6 hours;
-    uint256 public constant NODE_VERIFY_DURATION = 30 minutes;
-    uint256 public constant MIN_TEE_STAKE_AMOUNT = 1e6 * 1e18;
-    uint256 public constant TEE_SLASH_AMOUNT = 1e3 * 1e18;
-    uint256 public constant TEE_UNSTAKE_DURATION = 6 hours;
-    uint256 public constant UNIT_REWARDS = 10;
-    uint64 public constant NODE_MAX_MISS_VERIFY_COUNT = 5;
     uint32 public constant VRF_NUM_WORDS = 1;
-    uint16 public constant MAX_NODE_WEIGHTS = 100; // todo can be configured by admin (consider a config contract)
     uint16 public constant MAX_UINT16 = 65535; // type(uint16).max;
 
     VrfConfigData public vrfConfig;
@@ -32,6 +24,7 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
     address public vault;
     address public carvToken;
     address public carvNft;
+    address public settings;
 
     uint16 nodeIndex;
     uint16[] public activeVrfNodeList;
@@ -44,7 +37,10 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
     mapping(address => TeeStakeInfo) public teeStakeInfos;
     mapping(bytes32 => Attestation) public attestations;
     mapping(uint256 => bytes32) public request2Attestation;
-    mapping(address => mapping(bytes32 => bool)) nodeSlashed;
+    mapping(address => mapping(bytes32 => bool)) public nodeSlashed;
+    mapping(address => mapping(bytes32 => bool)) public nodeClaimedTeeRewards;
+    mapping(uint32 => uint32) public globalDailyActiveNodes;
+    mapping(address => mapping(uint32 => uint32)) public nodeDailyActive;
 
     constructor(address carvToken_, address carvNft_, address vault_, address vrf_) VRFConsumerBaseV2Plus(vrf_) {
         carvToken = carvToken_;
@@ -57,61 +53,80 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
+    function updateSettings(address settings_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        settings = settings_;
+    }
+
     function updateVrfConfig(VrfConfigData calldata config) external onlyRole(DEFAULT_ADMIN_ROLE) {
         vrfConfig = config;
         emit UpdateVrfConfig(config);
     }
 
+    // CARV to veCARV, stored in Vault
     function teeStake(uint256 amount) external onlyRole(TEE_ROLE) {
-        require(amount >= MIN_TEE_STAKE_AMOUNT, "Not meet min");
+        require(amount >= ISettings(settings).minTeeStakeAmount(), "Not meet min");
         require(!teeStakeInfos[msg.sender].valid, "Invalid");
-        IERC20(carvToken).transferFrom(msg.sender, address(this), amount);
+        IERC20(carvToken).transferFrom(msg.sender, vault, amount);
+        IVault(vault).teeDeposit(amount);
         teeStakeInfos[msg.sender] = TeeStakeInfo(true, amount, 0);
 
         emit TeeStake(msg.sender, amount);
     }
 
+    // return veCARV to tee
     function teeUnstake() external onlyRole(TEE_ROLE) {
         TeeStakeInfo storage info = teeStakeInfos[msg.sender];
         require(
-            block.timestamp - info.lastReportAt >= TEE_UNSTAKE_DURATION,
-            "duration"
+            block.timestamp - info.lastReportAt >= ISettings(settings).teeUnstakeDuration(),
+            "Duration"
         );
 
         uint256 amount = info.staked;
         info.valid = false;
         info.staked = 0;
 
-        IERC20(carvToken).transfer(msg.sender, amount);
+        IVault(vault).teeWithdraw(msg.sender, amount);
         emit TeeUnstake(msg.sender, amount);
     }
 
     function teeSlash(address tee, bytes32 attestationID) external {
         Attestation storage attestation = attestations[attestationID];
-        require(attestation.reporter == tee, "reporter");
-        require(!attestation.slashed, "already slashed");
-        require(attestation.deadline < block.timestamp, "deadline");
-        require(attestation.valid < attestation.malicious, "valid attestation");
+        require(attestation.reporter == tee, "Reporter");
+        require(!attestation.slashed, "Already slashed");
+        require(attestation.deadline < block.timestamp, "Deadline");
+        require(attestation.valid < attestation.malicious, "Valid attestation");
         TeeStakeInfo storage info = teeStakeInfos[tee];
-        require(info.valid, "invalid tee");
+        require(info.valid, "Invalid tee");
 
-        info.staked -= TEE_SLASH_AMOUNT;
-        if (info.staked < TEE_SLASH_AMOUNT) {
+        uint256 totalSlash = ISettings(settings).teeSlashAmount() * (attestation.valid + attestation.invalid + attestation.malicious);
+        info.staked -= totalSlash;
+        if (info.staked < ISettings(settings).minTeeStakeAmount()) {
             info.valid = false;
         }
         attestation.slashed = true;
 
-        // TODO how to distribute slash tokens
-        IERC20(carvToken).transfer(msg.sender, TEE_SLASH_AMOUNT);
-        emit TeeSlash(tee, attestationID, TEE_SLASH_AMOUNT);
+        emit TeeSlash(tee, attestationID, totalSlash);
+    }
+
+    function claimMaliciousTeeRewards(bytes32 attestationID) external {
+        Attestation storage attestation = attestations[attestationID];
+        require(attestation.slashed, "Not slashed");
+        require(attestation.verifiedNode[msg.sender], "Not verified");
+        require(!nodeClaimedTeeRewards[msg.sender][attestationID], "Already claimed");
+
+        uint256 reward = ISettings(settings).teeSlashAmount();
+        IVault(vault).teeWithdraw(msg.sender, reward);
+        nodeClaimedTeeRewards[msg.sender][attestationID] = true;
+
+        emit ClaimMaliciousTeeRewards(msg.sender, reward);
     }
 
     function teeReportAttestation(string memory attestation) external onlyRole(TEE_ROLE) {
         TeeStakeInfo storage tee = teeStakeInfos[msg.sender];
-        require(tee.valid, "invalid");
+        require(tee.valid, "Invalid");
 
         bytes32 attestationID = keccak256(bytes(attestation));
-        require(attestations[attestationID].reporter == address(0), "already reported");
+        require(attestations[attestationID].reporter == address(0), "Already reported");
 
         // request Random Number (chainlink vrf)
         uint256 requestId = s_vrfCoordinator.requestRandomWords(
@@ -136,22 +151,22 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
 
     function nodeEnter(address replacedNode) external {
         address node = msg.sender;
-        require(delegationWeights[node] > 0, "no weights");
+        require(delegationWeights[node] > 0, "No weights");
 
         if (nodeInfos[node].id == 0) {
             _nodeRegister(node);
         }
 
         NodeInfo memory info = nodeInfos[node];
-        require(!info.active, "already enter");
+        require(!info.active, "Already enter");
 
-        if (activeVrfNodeList.length < MAX_VRF_ACTIVE_NODES) {
+        if (activeVrfNodeList.length < ISettings(settings).maxVrfActiveNodes()) {
             activeVrfNodeList.push(info.id);
             _nodeActivate(node, uint16(activeVrfNodeList.length)-1);
             return;
         }
 
-        require(delegationWeights[node] > delegationWeights[replacedNode], "less weights");
+        require(delegationWeights[node] > delegationWeights[replacedNode], "Less weights");
         NodeInfo storage replacedNodeInfo = nodeInfos[replacedNode];
         activeVrfNodeList[replacedNodeInfo.listIndex] = info.id;
         _nodeActivate(node, replacedNodeInfo.listIndex);
@@ -159,68 +174,60 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
     }
 
     function nodeExit() external {
-        require(nodeInfos[msg.sender].active, "already exit");
+        require(nodeInfos[msg.sender].active, "Already exit");
         _nodeExit(msg.sender);
     }
 
     function nodeClaim() external {
         NodeInfo storage nodeInfo = nodeInfos[msg.sender];
-        require(nodeInfo.id > 0, "not register");
+        require(nodeInfo.id > 0, "Not register");
+        require(nodeInfo.selfTotalRewards > int256(nodeInfo.selfClaimedRewards), "No reward");
 
-        if (
-            nodeInfo.active &&
-            (block.timestamp - nodeInfo.lastEnterTime >= NODE_MIN_ONLINE_DURATION) &&
-            (nodeInfo.pendingVerifyCount > nodeInfo.missedVerifyCount)
-        ) {
-            nodeInfo.confirmedVerifyCount += nodeInfo.pendingVerifyCount - nodeInfo.missedVerifyCount;
-            nodeInfo.pendingVerifyCount = 0;
-            nodeInfo.missedVerifyCount = 0;
-        }
-
-        require(nodeInfo.confirmedVerifyCount > nodeInfo.claimedVerifyCount, "no rewards");
-        uint256 rewards = UNIT_REWARDS * (nodeInfo.confirmedVerifyCount - nodeInfo.claimedVerifyCount);
-        nodeInfo.claimedVerifyCount = nodeInfo.confirmedVerifyCount;
+        uint256 rewards = uint256(nodeInfo.selfTotalRewards) - nodeInfo.selfClaimedRewards;
+        nodeInfo.selfClaimedRewards = uint256(nodeInfo.selfTotalRewards);
 
         IVault(vault).rewardsWithdraw(msg.sender, rewards);
-
         emit NodeClaim(msg.sender, rewards);
     }
 
     function nodeSlash(address node, bytes32 attestationID, uint16 index) external {
         Attestation storage attestation = attestations[attestationID];
-        require(attestation.deadline > block.timestamp, "deadline");
+        require(attestation.deadline > block.timestamp, "Deadline");
 
         NodeInfo storage nodeInfo = nodeInfos[node];
-        require(!nodeSlashed[node][attestationID], "already slashed");
-        require(nodeInfo.active, "node exit");
-        require(_checkNodeChosen(nodeInfo.id, attestation.vrfChosen, index), "not chosen");
-        require(!attestation.verifiedNode[node], "node verified");
+        require(!nodeSlashed[node][attestationID], "Already slashed");
+        require(nodeInfo.active, "Node exit");
+        require(_checkNodeChosen(nodeInfo.id, attestation.vrfChosen, index), "Not chosen");
+        require(!attestation.verifiedNode[node], "Node verified");
 
         nodeInfo.missedVerifyCount += 1;
         nodeSlashed[node][attestationID] = true;
 
-        if (nodeInfo.missedVerifyCount > NODE_MAX_MISS_VERIFY_COUNT) {
+        if (nodeInfo.missedVerifyCount > ISettings(settings).nodeMaxMissVerifyCount()) {
             // too many miss, force exit
             _nodeExit(node);
         }
 
-        IVault(vault).rewardsWithdraw(msg.sender, UNIT_REWARDS);
-        emit NodeSlash(node, attestationID, UNIT_REWARDS);
+        uint256 reward = ISettings(settings).nodeSlashReward();
+        nodeInfo.selfTotalRewards -= int256(reward);
+        IVault(vault).rewardsWithdraw(msg.sender, reward);
+
+        emit NodeSlash(node, attestationID, reward);
     }
 
     function nodeReportVerification(bytes32 attestationID, uint16 index, AttestationResult result) external {
-        require(nodeInfos[msg.sender].active, "not active");
-        require(delegationWeights[msg.sender] > 0, "no weights");
+        require(nodeInfos[msg.sender].active, "Not active");
+        require(delegationWeights[msg.sender] > 0, "No weights");
 
         Attestation storage attestation = attestations[attestationID];
 
-        require(attestation.reporter != address(0), "attestation not exist");
-        require(attestation.deadline > block.timestamp, "deadline passed");
-        require(attestation.vrfChosen.length > 0, "waiting vrf");
-        require(!attestation.verifiedNode[msg.sender], "already verify");
+        require(attestation.reporter != address(0), "Attestation not exist");
+        require(attestation.deadline > block.timestamp, "Deadline passed");
+        require(attestation.vrfChosen.length > 0, "Waiting vrf");
+        require(!attestation.verifiedNode[msg.sender], "Already verify");
 
         NodeInfo storage nodeInfo = nodeInfos[msg.sender];
-        require(_checkNodeChosen(nodeInfo.id, attestation.vrfChosen, index), "not chosen");
+        require(_checkNodeChosen(nodeInfo.id, attestation.vrfChosen, index), "Not chosen");
 
         if (result == AttestationResult.Valid) {
             attestation.valid += 1;
@@ -232,21 +239,27 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
             revert("Unknown AttestationResult");
         }
         attestation.verifiedNode[msg.sender] = true;
-        nodeInfo.pendingVerifyCount += 1;
 
+        _checkAndUpdateNodeDailyActive(msg.sender);
         emit NodeReportVerification(msg.sender, attestationID, result);
+    }
+
+    function nodeReportDailyActive() external {
+        require(nodeInfos[msg.sender].active, "Inactive node");
+        require(nodeDailyActive[msg.sender][todayIndex()] == 0, "Already report");
+        _checkAndUpdateNodeDailyActive(msg.sender);
     }
 
     function delegate(uint256 tokenID, address to) external {
         address owner = IERC721(carvNft).ownerOf(tokenID);
-        require(owner == msg.sender, "not owner");
-        require(delegation[tokenID] == address(0), "alreday delegate");
-        require(delegationWeights[to] < MAX_NODE_WEIGHTS, "max node weights");
+        require(owner == msg.sender, "Not owner");
+        require(delegation[tokenID] == address(0), "Already delegate");
+        require(delegationWeights[to] < ISettings(settings).maxNodeWeights(), "Max node weights");
 
         delegation[tokenID] = to;
         delegationWeights[to] += 1;
 
-        tokenRewardInfos[tokenID].initialVerifyCount = nodeInfos[to].confirmedVerifyCount + nodeInfos[to].pendingVerifyCount - nodeInfos[to].missedVerifyCount;
+        tokenRewardInfos[tokenID].initialRewards = nodeInfos[to].delegationRewards;
         emit Delegate(tokenID, to);
     }
 
@@ -254,10 +267,10 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
         address owner = IERC721(carvNft).ownerOf(tokenID);
         address old = delegation[tokenID];
 
-        require(owner == msg.sender, "not owner");
-        require(old != address(0), "not delegate");
-        require(old != to, "redelegate to same one");
-        require(delegationWeights[to] < MAX_NODE_WEIGHTS, "max node weights");
+        require(owner == msg.sender, "Not owner");
+        require(old != address(0), "Not delegate");
+        require(old != to, "Redelegate to same one");
+        require(delegationWeights[to] < ISettings(settings).maxNodeWeights(), "Max node weights");
 
         delegation[tokenID] = to;
         delegationWeights[to] += 1;
@@ -271,8 +284,8 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
         NodeInfo memory oldNodeInfo = nodeInfos[old];
         TokenRewardInfo storage rewardInfo = tokenRewardInfos[tokenID];
 
-        rewardInfo.confirmedVerifyCount += oldNodeInfo.confirmedVerifyCount + oldNodeInfo.pendingVerifyCount - oldNodeInfo.missedVerifyCount - rewardInfo.initialVerifyCount;
-        rewardInfo.initialVerifyCount = toNodeInfo.confirmedVerifyCount + toNodeInfo.pendingVerifyCount - toNodeInfo.missedVerifyCount;
+        rewardInfo.totalRewards += oldNodeInfo.delegationRewards - rewardInfo.initialRewards;
+        rewardInfo.initialRewards = toNodeInfo.delegationRewards;
 
         emit Redelegate(tokenID, to);
     }
@@ -281,8 +294,8 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
         address owner = IERC721(carvNft).ownerOf(tokenID);
         address old = delegation[tokenID];
 
-        require(owner == msg.sender, "not owner");
-        require(old != address(0), "not delegate");
+        require(owner == msg.sender, "Not owner");
+        require(old != address(0), "Not delegate");
 
         delegation[tokenID] = address(0);
         delegationWeights[old] -= 1;
@@ -293,42 +306,39 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
 
         NodeInfo memory oldNodeInfo = nodeInfos[old];
         TokenRewardInfo storage rewardInfo = tokenRewardInfos[tokenID];
-        rewardInfo.confirmedVerifyCount += oldNodeInfo.confirmedVerifyCount + oldNodeInfo.pendingVerifyCount - oldNodeInfo.missedVerifyCount - rewardInfo.initialVerifyCount;
+        rewardInfo.totalRewards += oldNodeInfo.delegationRewards - rewardInfo.initialRewards;
 
         emit Undelegate(tokenID, old);
     }
 
     function claimRewards(uint256 tokenID) external {
-        require(IERC721(carvNft).ownerOf(tokenID) == msg.sender, "not owner");
+        require(IERC721(carvNft).ownerOf(tokenID) == msg.sender, "Not owner");
 
         TokenRewardInfo storage rewardInfo = tokenRewardInfos[tokenID];
-
         NodeInfo memory nodeInfo = nodeInfos[delegation[tokenID]];
-        uint64 currentVerifyCount = nodeInfo.confirmedVerifyCount + nodeInfo.pendingVerifyCount - nodeInfo.missedVerifyCount;
-        rewardInfo.confirmedVerifyCount += currentVerifyCount - rewardInfo.initialVerifyCount;
-        rewardInfo.initialVerifyCount = currentVerifyCount;
+        rewardInfo.totalRewards += nodeInfo.delegationRewards - rewardInfo.initialRewards;
+        rewardInfo.initialRewards = nodeInfo.delegationRewards;
 
-        require(rewardInfo.confirmedVerifyCount > rewardInfo.claimedVerifyCount, "no rewards");
-        uint256 rewards = UNIT_REWARDS * (rewardInfo.confirmedVerifyCount - rewardInfo.claimedVerifyCount);
-        rewardInfo.claimedVerifyCount = rewardInfo.confirmedVerifyCount;
-
+        require(rewardInfo.totalRewards > rewardInfo.claimedRewards, "No reward");
+        uint256 rewards = rewardInfo.totalRewards - rewardInfo.claimedRewards;
+        rewardInfo.claimedRewards = rewardInfo.totalRewards;
         IVault(vault).rewardsWithdraw(msg.sender, rewards);
 
         emit ClaimRewards(tokenID, rewards);
     }
 
     function checkClaimed(uint256 tokenID) external view returns (bool) {
-        return tokenRewardInfos[tokenID].claimedVerifyCount > 0;
+        return tokenRewardInfos[tokenID].totalRewards > 0;
     }
 
     // chainlink VRF callback function
     // According to random words, emit event to decide nodes verifying
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
         Attestation storage attestation = attestations[request2Attestation[requestId]];
-        require(attestation.reporter != address(0), "attestation not exist");
-        require(randomWords.length >= VRF_NUM_WORDS, "wrong randomWords");
+        require(attestation.reporter != address(0), "Attestation not exist");
+        require(randomWords.length >= VRF_NUM_WORDS, "Wrong randomWords");
 
-        attestation.deadline = block.timestamp + NODE_VERIFY_DURATION;
+        attestation.deadline = block.timestamp + ISettings(settings).nodeVerifyDuration();
         attestation.vrfChosen = _vrfChooseNodes(randomWords[0]);
 
         emit ConfirmVrfNodes(requestId, attestation.vrfChosen, attestation.deadline);
@@ -362,23 +372,20 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
         NodeInfo storage info = nodeInfos[node];
         info.listIndex = MAX_UINT16;
         info.active = false;
+        info.missedVerifyCount = 0;
 
-        if ( (block.timestamp - info.lastEnterTime >= NODE_MIN_ONLINE_DURATION) && (info.pendingVerifyCount > info.missedVerifyCount)) {
-            info.confirmedVerifyCount += info.pendingVerifyCount - info.missedVerifyCount;
-            info.pendingVerifyCount = 0;
-            info.missedVerifyCount = 0;
-        }
-
+        _checkAndUpdateNodeDailyActive(node);
         emit NodeClear(node);
     }
 
     function _nodeRegister(address node) internal {
         // first enter, assign id
-        require(nodeIndex < MAX_UINT16, "index overflow");
+        require(nodeIndex < MAX_UINT16, "Index overflow");
         nodeIndex++;
         NodeInfo storage nodeInfo = nodeInfos[node];
         nodeInfo.id = nodeIndex;
         nodeInfo.listIndex = MAX_UINT16;
+        nodeInfo.lastConfirmDate = todayIndex()-1;
         nodeAddrByID[nodeIndex] = node;
 
         emit NodeRegister(node, nodeIndex);
@@ -409,5 +416,51 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
 
     function _checkNodeChosen(uint16 nodeID, uint16[] memory vrfChosen, uint16 index) internal pure returns (bool) {
         return vrfChosen[index] == nodeID;
+    }
+
+    function _confirmNodeRewards(address node) internal {
+        uint32 today = todayIndex();
+        NodeInfo storage nodeInfo = nodeInfos[node];
+
+        if (nodeInfo.lastConfirmDate == today-1) {
+            return;
+        }
+
+        for (uint32 dateIndex = nodeInfo.lastConfirmDate+1; dateIndex < today; dateIndex++) {
+            if (globalDailyActiveNodes[dateIndex] == 0) {
+                continue;
+            }
+            uint256 unitReward = IVault(vault).totalRewardByDate(dateIndex) / globalDailyActiveNodes[dateIndex];
+            uint256 commissionReward = ISettings(settings).mulCommissionRate(unitReward) * nodeDailyActive[node][dateIndex];
+            nodeInfo.selfTotalRewards += int256(commissionReward);
+            nodeInfo.delegationRewards += unitReward - commissionReward;
+        }
+
+        nodeInfo.lastConfirmDate = today-1;
+    }
+
+    function _checkAndUpdateNodeDailyActive(address node) internal {
+        uint32 today = todayIndex();
+        if (nodeDailyActive[node][today] > 0) {
+            return;
+        }
+
+        if (
+            (block.timestamp - nodeInfos[node].lastEnterTime >= ISettings(settings).nodeMinOnlineDuration())
+            &&
+            ( todayOffset() >= ISettings(settings).nodeMinOnlineDuration())
+        ) {
+            nodeDailyActive[node][today] += delegationWeights[node];
+            globalDailyActiveNodes[today] += delegationWeights[node];
+        }
+        _confirmNodeRewards(node);
+    }
+
+    function todayIndex() public view returns (uint32) {
+        return uint32((block.timestamp - IVault(vault).startTimestamp()) / (1 days));
+    }
+
+    function todayOffset() public view returns (uint256) {
+        return (block.timestamp - IVault(vault).startTimestamp()) % (1 days);
     }
 }
