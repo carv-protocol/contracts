@@ -108,6 +108,7 @@ interface IProtocolService {
 
     // admin
     event UpdateVrfConfig(VrfConfigData config);
+    event UpdateSettingsAddress(address settings);
 
     // tee
     event TeeStake(address tee, uint256 amount);
@@ -134,6 +135,15 @@ interface IProtocolService {
 
     /*----------------------------------------------------------------------------------------------------------------*/
 
+    /**
+     * @notice update address of Settings contract.
+     *
+     * @dev Only admin role.
+     * @dev Emits `UpdateSettingsAddress`.
+     *
+     * @param settings_: address of Settings contract.
+     */
+    function updateSettingsAddress(address settings_) external;
     /**
      * @notice update VRF config.
      *
@@ -176,10 +186,9 @@ interface IProtocolService {
      *
      * @dev Emits `TeeSlash`.
      *
-     * @param tee: address of tee which is proven malicious.
      * @param attestationID: id of attestation which is proven malicious.
      */
-    function teeSlash(address tee, bytes32 attestationID) external;
+    function teeSlash(bytes32 attestationID) external;
 
     /**
      * @notice When an attestation reported by a tee is slashed,
@@ -260,6 +269,12 @@ interface IProtocolService {
     function nodeSlash(address node, bytes32 attestationID, uint16 index) external;
 
     /**
+     * @notice If the node is online but hasn't reported verification that day,
+     * @notice the smart contract needs to be notified through this function to update the status of the node today.
+     */
+    function nodeReportDailyActive() external;
+
+    /**
      * @notice After an attestation is reported, a group of nodes will be randomly selected through chainlink's VRF.
      * @notice These nodes need to submit the verification within the specified time.
      * @notice When a node is selected by VRF, the proof is submitted by calling `nodeReportVerification`.
@@ -274,10 +289,13 @@ interface IProtocolService {
     function nodeReportVerification(bytes32 attestationID, uint16 index, AttestationResult result) external;
 
     /**
-     * @notice If the node is online but hasn't reported verification that day,
-     * @notice the smart contract needs to be notified through this function to update the status of the node today.
+     * @notice Batch reporting verification.
+     * @notice One address can collect multiple verifications and delegate reporting them in batches,
+     * @notice following the eip-712.
+     *
+     * @dev Emits `NodeReportVerificationBatch`.
      */
-    function nodeReportDailyActive() external;
+    function nodeReportVerificationBatch(bytes32 attestationID, VerificationInfo[] calldata infos) external;
 
     /**
      * @notice If the NFT holder doesn't want to run the node to report the verification himself,
@@ -332,4 +350,14 @@ interface IProtocolService {
      * @return claimed: whether this tokenID has already claimed rewards
      */
     function checkClaimed(uint256 tokenID) external view returns (bool);
+
+    /**
+     * @notice Get the index of today.
+     */
+    function todayIndex() external view returns (uint32);
+
+    /**
+     * @notice Get the offset of today.
+     */
+    function todayOffset() external view returns (uint256);
 }
