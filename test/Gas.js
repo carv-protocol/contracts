@@ -1,147 +1,146 @@
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { E, E18, deployAll, sign} = require("./Common")
 
 describe("Gas", function () {
-    function E(x, d) {
-        return ethers.BigNumber.from("10").pow(d).mul(x)
-    }
-
-    function E18(x) {
-        return ethers.BigNumber.from("1000000000000000000").mul(x)
-    }
-
-    function contractAddr(deployer, nonce) {
-        return ethers.utils.getContractAddress({
-            from: deployer,
-            nonce: nonce,
-        });
-    }
-
-    let carv, veCarv, nft, vault, setting, service, owner, alice, bob, coordinator
-
-    beforeEach(async function () {
-        [owner, alice, bob] = await ethers.getSigners();
-
-        const CarvToken = await ethers.getContractFactory("CarvToken");
-        const veCarvToken = await ethers.getContractFactory("veCarvToken");
-        const CarvNft = await ethers.getContractFactory("CarvNft");
-        const Vault = await ethers.getContractFactory("Vault");
-        const Settings = await ethers.getContractFactory("Settings");
-        const ProtocolService = await ethers.getContractFactory("ProtocolService");
-        const MockAggregator = await ethers.getContractFactory("Aggregator");
-        const MockVRFCoordinator = await ethers.getContractFactory("VRFCoordinator");
-
-        const nftAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 4)
-        const vaultAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 5)
-        const settingAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 6)
-        const serviceAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 7)
-
-        const aggregator = await MockAggregator.deploy();
-        coordinator = await MockVRFCoordinator.deploy();
-
-        carv = await CarvToken.deploy(owner.address);
-        veCarv = await veCarvToken.deploy(carv.address, vaultAddr);
-        nft = await CarvNft.deploy(carv.address, vaultAddr, serviceAddr);
-        vault = await Vault.deploy(carv.address, veCarv.address);
-        setting = await Settings.deploy();
-        service = await ProtocolService.deploy(carv.address, nftAddr, vaultAddr, coordinator.address);
-
-        await vault.initialize(owner.address, nftAddr, serviceAddr)
-        await setting.updateSettings({
-            maxVrfActiveNodes: 2000,
-            nodeMinOnlineDuration: 21600, // 6 hours
-            nodeVerifyDuration: 1800,  // 30 minutes
-            nodeSlashReward: E18(10) ,  // 10 veCARV
-            minTeeStakeAmount: E18(1e5),  // 10,000 CARV
-            teeSlashAmount: E18(100),      // 100 veCARV
-            teeUnstakeDuration: 21600,   // 6 hours
-            nodeMaxMissVerifyCount: 5,
-            commissionRate: 100,       // 1%
-            maxNodeWeights: 100,
-        })
-        await service.initialize()
-
-        await vault.updateAggregatorAddress(aggregator.address);
-        await service.updateVrfConfig({
-            keyHash: "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae",
-            subId: 100,
-            requestConfirmations: 3,
-            callbackGasLimit: 10000,
-            nativePayment: true
-        })
-        await service.updateSettings(settingAddr)
-    })
-
-    // it("Tee", async function () {
-    //     await carv.transfer(alice.address, E18(10000000))
-    //     await expect(service.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TEE_ROLE")), alice.address)).not.to.be.reverted;
-    //
-    //     await carv.connect(alice).approve(service.address, E18(1000000))
-    //     await expect(service.connect(alice).teeStake(E18(1000000))).not.to.be.reverted;
-    //     await expect(service.connect(alice).teeReportAttestation("test0")).not.to.be.reverted;
-    //     await coordinator.callback(1, [123456789])
-    //
-    //     await expect(service.connect(alice).teeReportAttestationBatch(["test1", "test2", "test3", "test4"])).not.to.be.reverted;
-    //     await coordinator.callback(2, [123456789])
-    // });
-
     async function runNode(signer) {
         await nft.connect(signer).mint();
         await service.connect(signer).delegate(await nft.tokenIndex(), signer.address)
         await service.connect(signer).nodeEnter(signer.address)
     }
 
-    it("Node", async function () {
+    let carv, veCarv, nft, vault, setting, service, coordinator, signers
 
-        let signers = await ethers.getSigners();
-        for (let i=0; i<signers.length; i++)
-        {
-            console.log(i)
-            await runNode(signers[i])
-        }
+    beforeEach(async function () {
+        [carv, veCarv, nft, vault, setting, service, coordinator, signers] = await deployAll()
+    })
 
+    it("Tee", async function () {
+        let alice = signers[1]
         await carv.transfer(alice.address, E18(10000000))
-        await expect(service.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TEE_ROLE")), alice.address)).not.to.be.reverted;
+        await expect(service.modifyTeeRole(alice.address, true)).not.to.be.reverted;
 
         await carv.connect(alice).approve(service.address, E18(1000000))
         await expect(service.connect(alice).teeStake(E18(1000000))).not.to.be.reverted;
-        await expect(service.connect(alice).teeReportAttestation("test0")).not.to.be.reverted;
+        await expect(service.connect(alice).teeReportAttestations(["test"])).not.to.be.reverted;
+        await coordinator.callback(1, [123456789])
+    });
+
+    it("Node", async function () {
+
+        for (let i=0; i<signers.length; i++)
+        {
+            await runNode(signers[i])
+        }
+
+        let alice = signers[1]
+        await carv.transfer(alice.address, E18(10000000))
+        await expect(service.modifyTeeRole(alice.address, true)).not.to.be.reverted;
+
+        await carv.connect(alice).approve(service.address, E18(1000000))
+        await expect(service.connect(alice).teeStake(E18(1000000))).not.to.be.reverted;
+
+        await expect(service.connect(alice).teeReportAttestations(["AwACAAAAAAAKAA8Ak5pyM/ecTKmUCg2zlX8GBw/7mmWR5ERHAV4zxrky5kMAAAAADAwQD///AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAADnAAAAAAAAAJaJXTgXAyj3OARc4/uFzHgukK9pPjKO35ECnm/JZu+YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADEwSV1yeA9Zmr37GXA491Xt8riUdtEKZ4h3vcGiPQiogAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKA7DaPkB1fo0iKOPoSWWU0muBL2+ZglPW8us6EQ3IzGrF9ojOQzNYWSI5v7ZRbjlH9ciYC0OYHhOSg4M501PcxhAAAAguvRNAlkL6BGxNTnTz9eYa3g18UzEc1aj6caKRN4zetCzur4AWx0LUMlWm36dqlgU85UZDoMQt1xvHBijiVpPECS2d/Sey7XpRTEKXAVchLFJnefv+397waWIJyhMgi9jMkAzOoGafhIZq+n5maFq8+LejmfkiRU6S15IZ4h8WDAwQD///AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFQAAAAAAAADnAAAAAAAAAJazR6ZOWgReJzacJubc2lH9fIUOmzo6eecY9DJh3uHkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACMT1d115ZQPpYTf3fGioKaAFasje1wFAsIGwlEkMV7/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEACgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAApefkxA9CZdmJyhU4mZgOC1W707AqXUK4Kj1XpHIlbMwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWvljWdcaz+UQbxVc3cES6qYTT1cTuWtz5r6osI1tQc1DJT0a9ofOjcaYBbgH7NUI4L1EZdHX3ySB9BCAIluxaSAAAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8FAF4OAAAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KTUlJRThUQ0NCSmlnQXdJQkFnSVVZRjR0MEJkak1vUmp2QW40RkQraGlmMDlwT0l3Q2dZSUtvWkl6ajBFQXdJdwpjREVpTUNBR0ExVUVBd3daU1c1MFpXd2dVMGRZSUZCRFN5QlFiR0YwWm05eWJTQkRRVEVhTUJnR0ExVUVDZ3dSClNXNTBaV3dnUTI5eWNHOXlZWFJwYjI0eEZEQVNCZ05WQkFjTUMxTmhiblJoSUVOc1lYSmhNUXN3Q1FZRFZRUUkKREFKRFFURUxNQWtHQTFVRUJoTUNWVk13SGhjTk1qTXdPVEkxTURjME56TTNXaGNOTXpBd09USTFNRGMwTnpNMwpXakJ3TVNJd0lBWURWUVFEREJsSmJuUmxiQ0JUUjFnZ1VFTkxJRU5sY25ScFptbGpZWFJsTVJvd0dBWURWUVFLCkRCRkpiblJsYkNCRGIzSndiM0poZEdsdmJqRVVNQklHQTFVRUJ3d0xVMkZ1ZEdFZ1EyeGhjbUV4Q3pBSkJnTlYKQkFnTUFrTkJNUXN3Q1FZRFZRUUdFd0pWVXpCWk1CTUdCeXFHU000OUFnRUdDQ3FHU000OUF3RUhBMElBQk9CSQp5N3NXNU0ycTVLUXI2QkZXVE9ZaU9XaGNOM3l4Nmhsb3BkU0hBNGh2K1Q2YTcvbkFxV3YrSGdxVXViNC9DVTBLClFYYnVxQkFTMVQ2VWN6cEVXTmFqZ2dNT01JSURDakFmQmdOVkhTTUVHREFXZ0JTVmIxM052UnZoNlVCSnlkVDAKTTg0QlZ3dmVWREJyQmdOVkhSOEVaREJpTUdDZ1hxQmNobHBvZEhSd2N6b3ZMMkZ3YVM1MGNuVnpkR1ZrYzJWeQpkbWxqWlhNdWFXNTBaV3d1WTI5dEwzTm5lQzlqWlhKMGFXWnBZMkYwYVc5dUwzWXpMM0JqYTJOeWJEOWpZVDF3CmJHRjBabTl5YlNabGJtTnZaR2x1Wnoxa1pYSXdIUVlEVlIwT0JCWUVGRUxBbW4zcVdhd1F3cFhzWVVlcmhxblYKODYvek1BNEdBMVVkRHdFQi93UUVBd0lHd0RBTUJnTlZIUk1CQWY4RUFqQUFNSUlDT3dZSktvWklodmhOQVEwQgpCSUlDTERDQ0FpZ3dIZ1lLS29aSWh2aE5BUTBCQVFRUWxxT1RCcmlpa1ZEWUwyRzltelA4UERDQ0FXVUdDaXFHClNJYjRUUUVOQVFJd2dnRlZNQkFHQ3lxR1NJYjRUUUVOQVFJQkFnRU1NQkFHQ3lxR1NJYjRUUUVOQVFJQ0FnRU0KTUJBR0N5cUdTSWI0VFFFTkFRSURBZ0VETUJBR0N5cUdTSWI0VFFFTkFRSUVBZ0VETUJFR0N5cUdTSWI0VFFFTgpBUUlGQWdJQS96QVJCZ3NxaGtpRytFMEJEUUVDQmdJQ0FQOHdFQVlMS29aSWh2aE5BUTBCQWdjQ0FRQXdFQVlMCktvWklodmhOQVEwQkFnZ0NBUUF3RUFZTEtvWklodmhOQVEwQkFna0NBUUF3RUFZTEtvWklodmhOQVEwQkFnb0MKQVFBd0VBWUxLb1pJaHZoTkFRMEJBZ3NDQVFBd0VBWUxLb1pJaHZoTkFRMEJBZ3dDQVFBd0VBWUxLb1pJaHZoTgpBUTBCQWcwQ0FRQXdFQVlMS29aSWh2aE5BUTBCQWc0Q0FRQXdFQVlMS29aSWh2aE5BUTBCQWc4Q0FRQXdFQVlMCktvWklodmhOQVEwQkFoQUNBUUF3RUFZTEtvWklodmhOQVEwQkFoRUNBUTB3SHdZTEtvWklodmhOQVEwQkFoSUUKRUF3TUF3UC8vd0FBQUFBQUFBQUFBQUF3RUFZS0tvWklodmhOQVEwQkF3UUNBQUF3RkFZS0tvWklodmhOQVEwQgpCQVFHQUdCcUFBQUFNQThHQ2lxR1NJYjRUUUVOQVFVS0FRRXdIZ1lLS29aSWh2aE5BUTBCQmdRUVcrOXQrTEwxCkxTWW5XejVBK3YzUm9UQkVCZ29xaGtpRytFMEJEUUVITURZd0VBWUxLb1pJaHZoTkFRMEJCd0VCQWY4d0VBWUwKS29aSWh2aE5BUTBCQndJQkFmOHdFQVlMS29aSWh2aE5BUTBCQndNQkFmOHdDZ1lJS29aSXpqMEVBd0lEUndBdwpSQUlnR25ETldndzBOK29UYnRRR1V4OFpvK09jcVpUTnZhMzZXb2pTeGdlTG9kc0NJRHd0V3pXc1NRdEw0d1AyClNYb3JwUXVSQkxWZ0FUUXR4ZkdqYU9DbVdjOHQKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQotLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KTUlJQ2xqQ0NBajJnQXdJQkFnSVZBSlZ2WGMyOUcrSHBRRW5KMVBRenpnRlhDOTVVTUFvR0NDcUdTTTQ5QkFNQwpNR2d4R2pBWUJnTlZCQU1NRVVsdWRHVnNJRk5IV0NCU2IyOTBJRU5CTVJvd0dBWURWUVFLREJGSmJuUmxiQ0JECmIzSndiM0poZEdsdmJqRVVNQklHQTFVRUJ3d0xVMkZ1ZEdFZ1EyeGhjbUV4Q3pBSkJnTlZCQWdNQWtOQk1Rc3cKQ1FZRFZRUUdFd0pWVXpBZUZ3MHhPREExTWpFeE1EVXdNVEJhRncwek16QTFNakV4TURVd01UQmFNSEF4SWpBZwpCZ05WQkFNTUdVbHVkR1ZzSUZOSFdDQlFRMHNnVUd4aGRHWnZjbTBnUTBFeEdqQVlCZ05WQkFvTUVVbHVkR1ZzCklFTnZjbkJ2Y21GMGFXOXVNUlF3RWdZRFZRUUhEQXRUWVc1MFlTQkRiR0Z5WVRFTE1Ba0dBMVVFQ0F3Q1EwRXgKQ3pBSkJnTlZCQVlUQWxWVE1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRU5TQi83dDIxbFhTTwoyQ3V6cHh3NzRlSkI3MkV5REdnVzVyWEN0eDJ0VlRMcTZoS2s2eitVaVJaQ25xUjdwc092Z3FGZVN4bG1UbEpsCmVUbWkyV1l6M3FPQnV6Q0J1REFmQmdOVkhTTUVHREFXZ0JRaVpReldXcDAwaWZPRHRKVlN2MUFiT1NjR3JEQlMKQmdOVkhSOEVTekJKTUVlZ1JhQkRoa0ZvZEhSd2N6b3ZMMk5sY25ScFptbGpZWFJsY3k1MGNuVnpkR1ZrYzJWeQpkbWxqWlhNdWFXNTBaV3d1WTI5dEwwbHVkR1ZzVTBkWVVtOXZkRU5CTG1SbGNqQWRCZ05WSFE0RUZnUVVsVzlkCnpiMGI0ZWxBU2NuVTlEUE9BVmNMM2xRd0RnWURWUjBQQVFIL0JBUURBZ0VHTUJJR0ExVWRFd0VCL3dRSU1BWUIKQWY4Q0FRQXdDZ1lJS29aSXpqMEVBd0lEUndBd1JBSWdYc1ZraTB3K2k2VllHVzNVRi8yMnVhWGUwWUpEajFVZQpuQStUakQxYWk1Y0NJQ1liMVNBbUQ1eGtmVFZwdm80VW95aVNZeHJEV0xtVVI0Q0k5Tkt5ZlBOKwotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQpNSUlDanpDQ0FqU2dBd0lCQWdJVUltVU0xbHFkTkluemc3U1ZVcjlRR3prbkJxd3dDZ1lJS29aSXpqMEVBd0l3CmFERWFNQmdHQTFVRUF3d1JTVzUwWld3Z1UwZFlJRkp2YjNRZ1EwRXhHakFZQmdOVkJBb01FVWx1ZEdWc0lFTnYKY25CdmNtRjBhVzl1TVJRd0VnWURWUVFIREF0VFlXNTBZU0JEYkdGeVlURUxNQWtHQTFVRUNBd0NRMEV4Q3pBSgpCZ05WQkFZVEFsVlRNQjRYRFRFNE1EVXlNVEV3TkRVeE1Gb1hEVFE1TVRJek1USXpOVGsxT1Zvd2FERWFNQmdHCkExVUVBd3dSU1c1MFpXd2dVMGRZSUZKdmIzUWdRMEV4R2pBWUJnTlZCQW9NRVVsdWRHVnNJRU52Y25CdmNtRjAKYVc5dU1SUXdFZ1lEVlFRSERBdFRZVzUwWVNCRGJHRnlZVEVMTUFrR0ExVUVDQXdDUTBFeEN6QUpCZ05WQkFZVApBbFZUTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFQzZuRXdNRElZWk9qL2lQV3NDemFFS2k3CjFPaU9TTFJGaFdHamJuQlZKZlZua1k0dTNJamtEWVlMME14TzRtcXN5WWpsQmFsVFZZeEZQMnNKQks1emxLT0IKdXpDQnVEQWZCZ05WSFNNRUdEQVdnQlFpWlF6V1dwMDBpZk9EdEpWU3YxQWJPU2NHckRCU0JnTlZIUjhFU3pCSgpNRWVnUmFCRGhrRm9kSFJ3Y3pvdkwyTmxjblJwWm1sallYUmxjeTUwY25WemRHVmtjMlZ5ZG1salpYTXVhVzUwClpXd3VZMjl0TDBsdWRHVnNVMGRZVW05dmRFTkJMbVJsY2pBZEJnTlZIUTRFRmdRVUltVU0xbHFkTkluemc3U1YKVXI5UUd6a25CcXd3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQkFmOENBUUV3Q2dZSQpLb1pJemowRUF3SURTUUF3UmdJaEFPVy81UWtSK1M5Q2lTRGNOb293THVQUkxzV0dmL1lpN0dTWDk0Qmd3VHdnCkFpRUE0SjBsckhvTXMrWG81by9zWDZPOVFXeEhSQXZaVUdPZFJRN2N2cVJYYXFJPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCgA="])).not.to.be.reverted;
         await coordinator.callback(1, [123456789])
 
-        await expect(service.connect(alice).teeReportAttestationBatch(["tess1"])).not.to.be.reverted;
+        await expect(service.connect(alice).teeReportAttestations(["test11"])).not.to.be.reverted;
         await coordinator.callback(2, [123456789])
 
-        await expect(service.connect(alice).teeReportAttestationBatch(["test1", "test2", "test3", "test4"])).not.to.be.reverted;
+        await expect(service.connect(alice).teeReportAttestations(["test21", "test22", "test23", "test24"])).not.to.be.reverted;
         await coordinator.callback(3, [123456789])
-        //
-        // await expect(service.connect(alice).teeReportAttestationBatch(
-        //     ["test5", "test6", "test7", "test8", "test9", "test10", "test11", "test12", "test13", "test14", "test15", "test16"]
-        // )).not.to.be.reverted;
-        // await coordinator.callback(4, [123456789])
+
+        await expect(service.connect(alice).teeReportAttestations(
+            ["test31", "test32", "test33", "test34", "test35", "test36", "test37", "test38", "test39", "test30"]
+        )).not.to.be.reverted;
+        await coordinator.callback(4, [123456789])
 
     });
-    //
-    // it("Report", async function () {
-    //
-    //     await nft.connect(alice).mint();
-    //     await expect(service.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
-    //     await expect(service.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
-    //
-    //     await expect(service.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TEE_ROLE")), owner.address)).not.to.be.reverted;
-    //     await carv.approve(service.address, E18(1000000))
-    //     await expect(service.teeStake(E18(1000000))).not.to.be.reverted;
-    //     await expect(service.teeReportAttestation("test")).not.to.be.reverted;
-    //     await coordinator.callback(1, [123456789])
-    //
-    //     await service.connect(alice).nodeReportVerification(
-    //         ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
-    //         0,
-    //         0
-    //     )
-    //
-    //     // console.log(await service.attestations(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test"))))
-    //     // console.log(await service.nodeInfos(alice.address))
-    // });
+
+    it("Report", async function () {
+        let owner = signers[0]
+        let alice = signers[1]
+
+        await nft.connect(alice).mint();
+        await expect(service.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
+        await expect(service.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
+
+        await expect(service.modifyTeeRole(owner.address, true)).not.to.be.reverted;
+        await carv.approve(service.address, E18(1000000))
+        await expect(service.teeStake(E18(1000000))).not.to.be.reverted;
+        await expect(service.teeReportAttestations(["test"])).not.to.be.reverted;
+        await coordinator.callback(1, [123456789])
+
+        await service.connect(alice).nodeReportVerification(
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
+            0,
+            0
+        )
+    });
+
+    it("Batch", async function () {
+        for (let i=0; i<signers.length; i++)
+        {
+            await runNode(signers[i])
+        }
+        let attestation = "AwACAAAAAAAKAA8Ak5pyM/ecTKmUCg2zlX8GBw/7mmWR5ERHAV4zxrky5kMAAAAADAwQD///AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAADnAAAAAAAAAJaJXTgXAyj3OARc4/uFzHgukK9pPjKO35ECnm/JZu+YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADEwSV1yeA9Zmr37GXA491Xt8riUdtEKZ4h3vcGiPQiogAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKA7DaPkB1fo0iKOPoSWWU0muBL2+ZglPW8us6EQ3IzGrF9ojOQzNYWSI5v7ZRbjlH9ciYC0OYHhOSg4M501PcxhAAAAguvRNAlkL6BGxNTnTz9eYa3g18UzEc1aj6caKRN4zetCzur4AWx0LUMlWm36dqlgU85UZDoMQt1xvHBijiVpPECS2d/Sey7XpRTEKXAVchLFJnefv+397waWIJyhMgi9jMkAzOoGafhIZq+n5maFq8+LejmfkiRU6S15IZ4h8WDAwQD///AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFQAAAAAAAADnAAAAAAAAAJazR6ZOWgReJzacJubc2lH9fIUOmzo6eecY9DJh3uHkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACMT1d115ZQPpYTf3fGioKaAFasje1wFAsIGwlEkMV7/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEACgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAApefkxA9CZdmJyhU4mZgOC1W707AqXUK4Kj1XpHIlbMwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWvljWdcaz+UQbxVc3cES6qYTT1cTuWtz5r6osI1tQc1DJT0a9ofOjcaYBbgH7NUI4L1EZdHX3ySB9BCAIluxaSAAAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8FAF4OAAAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KTUlJRThUQ0NCSmlnQXdJQkFnSVVZRjR0MEJkak1vUmp2QW40RkQraGlmMDlwT0l3Q2dZSUtvWkl6ajBFQXdJdwpjREVpTUNBR0ExVUVBd3daU1c1MFpXd2dVMGRZSUZCRFN5QlFiR0YwWm05eWJTQkRRVEVhTUJnR0ExVUVDZ3dSClNXNTBaV3dnUTI5eWNHOXlZWFJwYjI0eEZEQVNCZ05WQkFjTUMxTmhiblJoSUVOc1lYSmhNUXN3Q1FZRFZRUUkKREFKRFFURUxNQWtHQTFVRUJoTUNWVk13SGhjTk1qTXdPVEkxTURjME56TTNXaGNOTXpBd09USTFNRGMwTnpNMwpXakJ3TVNJd0lBWURWUVFEREJsSmJuUmxiQ0JUUjFnZ1VFTkxJRU5sY25ScFptbGpZWFJsTVJvd0dBWURWUVFLCkRCRkpiblJsYkNCRGIzSndiM0poZEdsdmJqRVVNQklHQTFVRUJ3d0xVMkZ1ZEdFZ1EyeGhjbUV4Q3pBSkJnTlYKQkFnTUFrTkJNUXN3Q1FZRFZRUUdFd0pWVXpCWk1CTUdCeXFHU000OUFnRUdDQ3FHU000OUF3RUhBMElBQk9CSQp5N3NXNU0ycTVLUXI2QkZXVE9ZaU9XaGNOM3l4Nmhsb3BkU0hBNGh2K1Q2YTcvbkFxV3YrSGdxVXViNC9DVTBLClFYYnVxQkFTMVQ2VWN6cEVXTmFqZ2dNT01JSURDakFmQmdOVkhTTUVHREFXZ0JTVmIxM052UnZoNlVCSnlkVDAKTTg0QlZ3dmVWREJyQmdOVkhSOEVaREJpTUdDZ1hxQmNobHBvZEhSd2N6b3ZMMkZ3YVM1MGNuVnpkR1ZrYzJWeQpkbWxqWlhNdWFXNTBaV3d1WTI5dEwzTm5lQzlqWlhKMGFXWnBZMkYwYVc5dUwzWXpMM0JqYTJOeWJEOWpZVDF3CmJHRjBabTl5YlNabGJtTnZaR2x1Wnoxa1pYSXdIUVlEVlIwT0JCWUVGRUxBbW4zcVdhd1F3cFhzWVVlcmhxblYKODYvek1BNEdBMVVkRHdFQi93UUVBd0lHd0RBTUJnTlZIUk1CQWY4RUFqQUFNSUlDT3dZSktvWklodmhOQVEwQgpCSUlDTERDQ0FpZ3dIZ1lLS29aSWh2aE5BUTBCQVFRUWxxT1RCcmlpa1ZEWUwyRzltelA4UERDQ0FXVUdDaXFHClNJYjRUUUVOQVFJd2dnRlZNQkFHQ3lxR1NJYjRUUUVOQVFJQkFnRU1NQkFHQ3lxR1NJYjRUUUVOQVFJQ0FnRU0KTUJBR0N5cUdTSWI0VFFFTkFRSURBZ0VETUJBR0N5cUdTSWI0VFFFTkFRSUVBZ0VETUJFR0N5cUdTSWI0VFFFTgpBUUlGQWdJQS96QVJCZ3NxaGtpRytFMEJEUUVDQmdJQ0FQOHdFQVlMS29aSWh2aE5BUTBCQWdjQ0FRQXdFQVlMCktvWklodmhOQVEwQkFnZ0NBUUF3RUFZTEtvWklodmhOQVEwQkFna0NBUUF3RUFZTEtvWklodmhOQVEwQkFnb0MKQVFBd0VBWUxLb1pJaHZoTkFRMEJBZ3NDQVFBd0VBWUxLb1pJaHZoTkFRMEJBZ3dDQVFBd0VBWUxLb1pJaHZoTgpBUTBCQWcwQ0FRQXdFQVlMS29aSWh2aE5BUTBCQWc0Q0FRQXdFQVlMS29aSWh2aE5BUTBCQWc4Q0FRQXdFQVlMCktvWklodmhOQVEwQkFoQUNBUUF3RUFZTEtvWklodmhOQVEwQkFoRUNBUTB3SHdZTEtvWklodmhOQVEwQkFoSUUKRUF3TUF3UC8vd0FBQUFBQUFBQUFBQUF3RUFZS0tvWklodmhOQVEwQkF3UUNBQUF3RkFZS0tvWklodmhOQVEwQgpCQVFHQUdCcUFBQUFNQThHQ2lxR1NJYjRUUUVOQVFVS0FRRXdIZ1lLS29aSWh2aE5BUTBCQmdRUVcrOXQrTEwxCkxTWW5XejVBK3YzUm9UQkVCZ29xaGtpRytFMEJEUUVITURZd0VBWUxLb1pJaHZoTkFRMEJCd0VCQWY4d0VBWUwKS29aSWh2aE5BUTBCQndJQkFmOHdFQVlMS29aSWh2aE5BUTBCQndNQkFmOHdDZ1lJS29aSXpqMEVBd0lEUndBdwpSQUlnR25ETldndzBOK29UYnRRR1V4OFpvK09jcVpUTnZhMzZXb2pTeGdlTG9kc0NJRHd0V3pXc1NRdEw0d1AyClNYb3JwUXVSQkxWZ0FUUXR4ZkdqYU9DbVdjOHQKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQotLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KTUlJQ2xqQ0NBajJnQXdJQkFnSVZBSlZ2WGMyOUcrSHBRRW5KMVBRenpnRlhDOTVVTUFvR0NDcUdTTTQ5QkFNQwpNR2d4R2pBWUJnTlZCQU1NRVVsdWRHVnNJRk5IV0NCU2IyOTBJRU5CTVJvd0dBWURWUVFLREJGSmJuUmxiQ0JECmIzSndiM0poZEdsdmJqRVVNQklHQTFVRUJ3d0xVMkZ1ZEdFZ1EyeGhjbUV4Q3pBSkJnTlZCQWdNQWtOQk1Rc3cKQ1FZRFZRUUdFd0pWVXpBZUZ3MHhPREExTWpFeE1EVXdNVEJhRncwek16QTFNakV4TURVd01UQmFNSEF4SWpBZwpCZ05WQkFNTUdVbHVkR1ZzSUZOSFdDQlFRMHNnVUd4aGRHWnZjbTBnUTBFeEdqQVlCZ05WQkFvTUVVbHVkR1ZzCklFTnZjbkJ2Y21GMGFXOXVNUlF3RWdZRFZRUUhEQXRUWVc1MFlTQkRiR0Z5WVRFTE1Ba0dBMVVFQ0F3Q1EwRXgKQ3pBSkJnTlZCQVlUQWxWVE1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRU5TQi83dDIxbFhTTwoyQ3V6cHh3NzRlSkI3MkV5REdnVzVyWEN0eDJ0VlRMcTZoS2s2eitVaVJaQ25xUjdwc092Z3FGZVN4bG1UbEpsCmVUbWkyV1l6M3FPQnV6Q0J1REFmQmdOVkhTTUVHREFXZ0JRaVpReldXcDAwaWZPRHRKVlN2MUFiT1NjR3JEQlMKQmdOVkhSOEVTekJKTUVlZ1JhQkRoa0ZvZEhSd2N6b3ZMMk5sY25ScFptbGpZWFJsY3k1MGNuVnpkR1ZrYzJWeQpkbWxqWlhNdWFXNTBaV3d1WTI5dEwwbHVkR1ZzVTBkWVVtOXZkRU5CTG1SbGNqQWRCZ05WSFE0RUZnUVVsVzlkCnpiMGI0ZWxBU2NuVTlEUE9BVmNMM2xRd0RnWURWUjBQQVFIL0JBUURBZ0VHTUJJR0ExVWRFd0VCL3dRSU1BWUIKQWY4Q0FRQXdDZ1lJS29aSXpqMEVBd0lEUndBd1JBSWdYc1ZraTB3K2k2VllHVzNVRi8yMnVhWGUwWUpEajFVZQpuQStUakQxYWk1Y0NJQ1liMVNBbUQ1eGtmVFZwdm80VW95aVNZeHJEV0xtVVI0Q0k5Tkt5ZlBOKwotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQpNSUlDanpDQ0FqU2dBd0lCQWdJVUltVU0xbHFkTkluemc3U1ZVcjlRR3prbkJxd3dDZ1lJS29aSXpqMEVBd0l3CmFERWFNQmdHQTFVRUF3d1JTVzUwWld3Z1UwZFlJRkp2YjNRZ1EwRXhHakFZQmdOVkJBb01FVWx1ZEdWc0lFTnYKY25CdmNtRjBhVzl1TVJRd0VnWURWUVFIREF0VFlXNTBZU0JEYkdGeVlURUxNQWtHQTFVRUNBd0NRMEV4Q3pBSgpCZ05WQkFZVEFsVlRNQjRYRFRFNE1EVXlNVEV3TkRVeE1Gb1hEVFE1TVRJek1USXpOVGsxT1Zvd2FERWFNQmdHCkExVUVBd3dSU1c1MFpXd2dVMGRZSUZKdmIzUWdRMEV4R2pBWUJnTlZCQW9NRVVsdWRHVnNJRU52Y25CdmNtRjAKYVc5dU1SUXdFZ1lEVlFRSERBdFRZVzUwWVNCRGJHRnlZVEVMTUFrR0ExVUVDQXdDUTBFeEN6QUpCZ05WQkFZVApBbFZUTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFQzZuRXdNRElZWk9qL2lQV3NDemFFS2k3CjFPaU9TTFJGaFdHamJuQlZKZlZua1k0dTNJamtEWVlMME14TzRtcXN5WWpsQmFsVFZZeEZQMnNKQks1emxLT0IKdXpDQnVEQWZCZ05WSFNNRUdEQVdnQlFpWlF6V1dwMDBpZk9EdEpWU3YxQWJPU2NHckRCU0JnTlZIUjhFU3pCSgpNRWVnUmFCRGhrRm9kSFJ3Y3pvdkwyTmxjblJwWm1sallYUmxjeTUwY25WemRHVmtjMlZ5ZG1salpYTXVhVzUwClpXd3VZMjl0TDBsdWRHVnNVMGRZVW05dmRFTkJMbVJsY2pBZEJnTlZIUTRFRmdRVUltVU0xbHFkTkluemc3U1YKVXI5UUd6a25CcXd3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQkFmOENBUUV3Q2dZSQpLb1pJemowRUF3SURTUUF3UmdJaEFPVy81UWtSK1M5Q2lTRGNOb293THVQUkxzV0dmL1lpN0dTWDk0Qmd3VHdnCkFpRUE0SjBsckhvTXMrWG81by9zWDZPOVFXeEhSQXZaVUdPZFJRN2N2cVJYYXFJPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCgA="
+
+        await expect(service.modifyTeeRole(signers[0].address, true)).not.to.be.reverted;
+        await carv.approve(service.address, E18(1000000))
+        await expect(service.teeStake(E18(1000000))).not.to.be.reverted;
+        await expect(service.teeReportAttestations([attestation])).not.to.be.reverted;
+        await coordinator.callback(1, [123456789])
+
+        let attestationID = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(attestation))
+
+        let signature0 = await sign(signers[10], attestationID, 0, 1)
+        let signature1 = await sign(signers[11], attestationID, 0, 2)
+        let signature2 = await sign(signers[12], attestationID, 0, 3)
+        let signature = await sign(signers[13], attestationID, 0, 4)
+
+        await service.nodeReportVerificationBatch(
+            attestationID,
+            [
+                {
+                    result: 0,
+                    index: 4,
+                    signer: signers[13].address,
+                    v: signature.v,
+                    r: signature.r,
+                    s: signature.s
+                },
+            ]
+        )
+
+        await service.nodeReportVerificationBatch(
+            attestationID,
+            [
+                {
+                    result: 0,
+                    index: 1,
+                    signer: signers[10].address,
+                    v: signature0.v,
+                    r: signature0.r,
+                    s: signature0.s
+                },
+                {
+                    result: 0,
+                    index: 2,
+                    signer: signers[11].address,
+                    v: signature1.v,
+                    r: signature1.r,
+                    s: signature1.s
+                },
+                {
+                    result: 0,
+                    index: 3,
+                    signer: signers[12].address,
+                    v: signature2.v,
+                    r: signature2.r,
+                    s: signature2.s
+                }
+            ]
+        )
+    })
 
 });

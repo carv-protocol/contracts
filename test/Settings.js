@@ -1,26 +1,9 @@
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { E, E18, deploySettings} = require("./Common")
 
 describe("Settings", function () {
-
-    function E(x, d) {
-        return ethers.BigNumber.from("10").pow(d).mul(x)
-    }
-
-    function E18(x) {
-        return ethers.BigNumber.from("1000000000000000000").mul(x)
-    }
-
-    async function deploy() {
-        const [owner] = await ethers.getSigners();
-        const Settings = await ethers.getContractFactory("Settings");
-        const settings = await Settings.deploy();
-        return { settings, owner };
-    }
-
     it("Update", async function () {
-        const { settings, owner } = await deploy();
+        const { settings, owner } = await deploySettings();
 
         await expect(await settings.updateSettings({
             maxVrfActiveNodes: 2000,

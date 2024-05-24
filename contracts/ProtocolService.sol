@@ -338,6 +338,10 @@ contract ProtocolService is IProtocolService, VRFConsumerBaseV2Plus, Adminable {
         return (block.timestamp - IVault(vault).startTimestamp()) % (1 days);
     }
 
+    function attestationVrfChosen(bytes32 attestationID) external view returns (uint16[] memory) {
+        return attestations[attestationID].vrfChosen;
+    }
+
     /*----------------------------------------- internal functions --------------------------------------------*/
 
     // request Random Number (chainlink vrf)
@@ -484,7 +488,7 @@ contract ProtocolService is IProtocolService, VRFConsumerBaseV2Plus, Adminable {
         bytes32 hashStruct = keccak256(
             abi.encode(
                 keccak256(
-                    "VerificationData(bytes32 attestationID,AttestationResult result,uint16 index)"
+                    "VerificationData(bytes32 attestationID,uint8 result,uint16 index)"
                 ),
                 attestationID,
                 info.result,
