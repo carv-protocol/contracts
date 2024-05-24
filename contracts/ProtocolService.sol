@@ -19,6 +19,17 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
     uint32 public constant VRF_NUM_WORDS = 1;
     uint16 public constant MAX_UINT16 = 65535; // type(uint16).max;
 
+    bytes32 public constant EIP712_DOMAIN_HASH = keccak256(
+        abi.encode(
+            keccak256(
+                "EIP712Domain(string name,string version,uint256 chainId)"
+            ),
+            keccak256(bytes("ProtocolService")),
+            keccak256(bytes("0.1.0")),
+            42161
+        )
+    );
+
     VrfConfigData public vrfConfig;
 
     address public vault;
@@ -36,7 +47,7 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
     mapping(uint256 => TokenRewardInfo) public tokenRewardInfos;
     mapping(address => TeeStakeInfo) public teeStakeInfos;
     mapping(bytes32 => Attestation) public attestations;
-    mapping(uint256 => bytes32) public request2Attestation;
+    mapping(uint256 => bytes32[]) public request2AttestationIDs;
     mapping(address => mapping(bytes32 => bool)) public nodeSlashed;
     mapping(address => mapping(bytes32 => bool)) public nodeClaimedTeeRewards;
     mapping(uint32 => uint32) public globalDailyActiveNodes;
@@ -121,32 +132,24 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
         emit ClaimMaliciousTeeRewards(msg.sender, reward);
     }
 
-    function teeReportAttestation(string memory attestation) external onlyRole(TEE_ROLE) {
+    function teeReportAttestations(string[] memory attestationInfos) external onlyRole(TEE_ROLE) {
         TeeStakeInfo storage tee = teeStakeInfos[msg.sender];
         require(tee.valid, "Invalid");
-
-        bytes32 attestationID = keccak256(bytes(attestation));
-        require(attestations[attestationID].reporter == address(0), "Already reported");
-
-        // request Random Number (chainlink vrf)
-        uint256 requestId = s_vrfCoordinator.requestRandomWords(
-            VRFV2PlusClient.RandomWordsRequest({
-                keyHash: vrfConfig.keyHash,
-                subId: vrfConfig.subId,
-                requestConfirmations: vrfConfig.requestConfirmations,
-                callbackGasLimit: vrfConfig.callbackGasLimit,
-                numWords: VRF_NUM_WORDS,
-                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: vrfConfig.nativePayment}))
-            })
-        );
-        request2Attestation[requestId] = attestationID;
-
-        Attestation storage attestationInfo = attestations[attestationID];
-        attestationInfo.reporter = msg.sender;
-        attestationInfo.requestID = requestId;
         tee.lastReportAt = block.timestamp;
 
-        emit TeeReportAttestation(msg.sender, attestationID, requestId, attestation);
+        uint256 requestId = _requestRandomWords();
+
+        bytes32[] memory attestationIDs = new bytes32[](attestationInfos.length);
+        for (uint index = 0; index < attestationInfos.length; index++) {
+            bytes32 attestationID = keccak256(bytes(attestationInfos[index]));
+            require(attestations[attestationID].reporter == address(0), "Already reported");
+            Attestation storage attestation = attestations[attestationID];
+            attestation.reporter = msg.sender;
+            attestationIDs[index] = attestationID;
+        }
+
+        request2AttestationIDs[requestId] = attestationIDs;
+        emit TeeReportAttestations(msg.sender, attestationIDs, attestationInfos, requestId);
     }
 
     function nodeEnter(address replacedNode) external {
@@ -216,18 +219,9 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
     }
 
     function nodeReportVerification(bytes32 attestationID, uint16 index, AttestationResult result) external {
-        require(nodeInfos[msg.sender].active, "Not active");
-        require(delegationWeights[msg.sender] > 0, "No weights");
-
         Attestation storage attestation = attestations[attestationID];
-
-        require(attestation.reporter != address(0), "Attestation not exist");
-        require(attestation.deadline > block.timestamp, "Deadline passed");
-        require(attestation.vrfChosen.length > 0, "Waiting vrf");
-        require(!attestation.verifiedNode[msg.sender], "Already verify");
-
-        NodeInfo storage nodeInfo = nodeInfos[msg.sender];
-        require(_checkNodeChosen(nodeInfo.id, attestation.vrfChosen, index), "Not chosen");
+        _checkAttestation(attestation);
+        _checkNodeInfos(attestation, msg.sender, index);
 
         if (result == AttestationResult.Valid) {
             attestation.valid += 1;
@@ -244,15 +238,44 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
         emit NodeReportVerification(msg.sender, attestationID, result);
     }
 
+    function nodeReportVerificationBatch(bytes32 attestationID, VerificationInfo[] calldata infos) external {
+        Attestation storage attestation = attestations[attestationID];
+        _checkAttestation(attestation);
+
+        uint16 valid;
+        uint16 invalid;
+        uint16 malicious;
+        for (uint i = 0; i < infos.length; i++) {
+            _checkSignature(attestationID, infos[i]);
+            _checkNodeInfos(attestation, infos[i].signer, infos[i].index);
+
+            if (infos[i].result == AttestationResult.Valid) {
+                valid++;
+            } else if (infos[i].result == AttestationResult.Invalid) {
+                invalid++;
+            } else if (infos[i].result == AttestationResult.Malicious) {
+                malicious++;
+            } else {
+                revert("Unknown AttestationResult");
+            }
+            attestation.verifiedNode[infos[i].signer] = true;
+            _checkAndUpdateNodeDailyActive(infos[i].signer);
+        }
+
+        attestation.valid += valid;
+        attestation.invalid += invalid;
+        attestation.malicious += malicious;
+
+        emit NodeReportVerificationBatch(attestationID, infos);
+    }
+
     function nodeReportDailyActive() external {
         require(nodeInfos[msg.sender].active, "Inactive node");
         require(nodeDailyActive[msg.sender][todayIndex()] == 0, "Already report");
         _checkAndUpdateNodeDailyActive(msg.sender);
     }
 
-    function delegate(uint256 tokenID, address to) external {
-        address owner = IERC721(carvNft).ownerOf(tokenID);
-        require(owner == msg.sender, "Not owner");
+    function delegate(uint256 tokenID, address to) external onlyNftOwner(tokenID) {
         require(delegation[tokenID] == address(0), "Already delegate");
         require(delegationWeights[to] < ISettings(settings).maxNodeWeights(), "Max node weights");
 
@@ -263,11 +286,8 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
         emit Delegate(tokenID, to);
     }
 
-    function redelegate(uint256 tokenID, address to) external {
-        address owner = IERC721(carvNft).ownerOf(tokenID);
+    function redelegate(uint256 tokenID, address to) external onlyNftOwner(tokenID) {
         address old = delegation[tokenID];
-
-        require(owner == msg.sender, "Not owner");
         require(old != address(0), "Not delegate");
         require(old != to, "Redelegate to same one");
         require(delegationWeights[to] < ISettings(settings).maxNodeWeights(), "Max node weights");
@@ -290,11 +310,8 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
         emit Redelegate(tokenID, to);
     }
 
-    function undelegate(uint256 tokenID) external {
-        address owner = IERC721(carvNft).ownerOf(tokenID);
+    function undelegate(uint256 tokenID) external onlyNftOwner(tokenID) {
         address old = delegation[tokenID];
-
-        require(owner == msg.sender, "Not owner");
         require(old != address(0), "Not delegate");
 
         delegation[tokenID] = address(0);
@@ -311,9 +328,7 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
         emit Undelegate(tokenID, old);
     }
 
-    function claimRewards(uint256 tokenID) external {
-        require(IERC721(carvNft).ownerOf(tokenID) == msg.sender, "Not owner");
-
+    function claimRewards(uint256 tokenID) external onlyNftOwner(tokenID) {
         TokenRewardInfo storage rewardInfo = tokenRewardInfos[tokenID];
         NodeInfo memory nodeInfo = nodeInfos[delegation[tokenID]];
         rewardInfo.totalRewards += nodeInfo.delegationRewards - rewardInfo.initialRewards;
@@ -334,14 +349,51 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
     // chainlink VRF callback function
     // According to random words, emit event to decide nodes verifying
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
-        Attestation storage attestation = attestations[request2Attestation[requestId]];
-        require(attestation.reporter != address(0), "Attestation not exist");
         require(randomWords.length >= VRF_NUM_WORDS, "Wrong randomWords");
 
-        attestation.deadline = block.timestamp + ISettings(settings).nodeVerifyDuration();
-        attestation.vrfChosen = _vrfChooseNodes(randomWords[0]);
+        uint256 deadline = block.timestamp + ISettings(settings).nodeVerifyDuration();
+        uint16[] memory vrfChosen = _vrfChooseNodes(randomWords[0]);
+        bytes32[] memory attestationIDs = request2AttestationIDs[requestId];
+        for (uint index = 0; index < attestationIDs.length; index++) {
+            Attestation storage attestation = attestations[attestationIDs[index]];
+            require(attestation.reporter != address(0), "Attestation not exist");
+            attestation.deadline = deadline;
+            attestation.vrfChosen = vrfChosen;
+        }
 
-        emit ConfirmVrfNodes(requestId, attestation.vrfChosen, attestation.deadline);
+        emit ConfirmVrfNodes(requestId, vrfChosen, deadline);
+    }
+
+    function _checkAttestation(Attestation storage attestation) internal {
+        require(attestation.reporter != address(0), "Attestation not exist");
+        require(attestation.deadline > block.timestamp, "Deadline passed");
+        require(attestation.vrfChosen.length > 0, "Waiting vrf");
+    }
+
+    function _checkSignature(bytes32 attestationID, VerificationInfo memory info) internal {
+        bytes32 hashStruct = keccak256(
+            abi.encode(
+                keccak256(
+                    "VerificationData(bytes32 attestationID,AttestationResult result,uint16 index)"
+                ),
+                attestationID,
+                info.result,
+                info.index
+            )
+        );
+        bytes32 digest = keccak256(
+            abi.encodePacked("\x19\x01", EIP712_DOMAIN_HASH, hashStruct)
+        );
+
+        require(info.signer == ecrecover(digest, info.v, info.r, info.s), "signer not match");
+    }
+
+    function _checkNodeInfos(Attestation storage attestation, address node, uint16 index) internal {
+        NodeInfo memory nodeInfo = nodeInfos[node];
+        require(nodeInfos[node].active, "Not active");
+        require(delegationWeights[node] > 0, "No weights");
+        require(!attestation.verifiedNode[node], "Already verify");
+        require(_checkNodeChosen(nodeInfo.id, attestation.vrfChosen, index), "Not chosen");
     }
 
     function _nodeExit(address node) internal {
@@ -389,6 +441,20 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
         nodeAddrByID[nodeIndex] = node;
 
         emit NodeRegister(node, nodeIndex);
+    }
+
+    // request Random Number (chainlink vrf)
+    function _requestRandomWords() internal returns (uint256) {
+        return s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: vrfConfig.keyHash,
+                subId: vrfConfig.subId,
+                requestConfirmations: vrfConfig.requestConfirmations,
+                callbackGasLimit: vrfConfig.callbackGasLimit,
+                numWords: VRF_NUM_WORDS,
+                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: vrfConfig.nativePayment}))
+            })
+        );
     }
 
     // if number of active nodes is less than 10, choose all active nodes
@@ -462,5 +528,10 @@ contract ProtocolService is IProtocolService, AccessControlUpgradeable, VRFConsu
 
     function todayOffset() public view returns (uint256) {
         return (block.timestamp - IVault(vault).startTimestamp()) % (1 days);
+    }
+
+    modifier onlyNftOwner(uint256 tokenID) {
+        require(IERC721(carvNft).ownerOf(tokenID) == msg.sender, "Not owner");
+        _;
     }
 }

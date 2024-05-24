@@ -69,7 +69,6 @@ interface IProtocolService {
      * `invalid`: The number of votes that this attestation is considered invalid (voted by the verifier node)
      * `slashed`: Has this attestation been slashed?
      * `deadline`: Deadline for collecting verification
-     * `requestID`: request ID of chainlink VRF
      * `vrfChosen`: The currently randomly selected verification nodes
      * `verifiedNode`: Records whether a node has reported verification
      */
@@ -80,7 +79,6 @@ interface IProtocolService {
         uint16 malicious;
         bool slashed;
         uint256 deadline;
-        uint256 requestID;
         uint16[] vrfChosen;
         mapping(address => bool) verifiedNode;
     }
@@ -93,6 +91,21 @@ interface IProtocolService {
         bool nativePayment;
     }
 
+    struct VerificationData {
+        bytes32 attestationID;
+        AttestationResult result;
+        uint16 index;
+    }
+
+    struct VerificationInfo {
+        AttestationResult result;
+        uint16 index;
+        address signer;
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+    }
+
     // admin
     event UpdateVrfConfig(VrfConfigData config);
 
@@ -101,7 +114,7 @@ interface IProtocolService {
     event TeeUnstake(address tee, uint256 amount);
     event TeeSlash(address tee, bytes32 attestationID, uint256 amount);
     event ClaimMaliciousTeeRewards(address verifer, uint256 amount);
-    event TeeReportAttestation(address tee, bytes32 attestationID, uint256 requestID, string attestation);
+    event TeeReportAttestations(address tee, bytes32[] attestationIDs, string[] attestationInfos, uint256 requestID);
     event ConfirmVrfNodes(uint256 requestId, uint16[] vrfChosen, uint256 deadline);
 
     // node
@@ -111,6 +124,7 @@ interface IProtocolService {
     event NodeSlash(address node, bytes32 attestationID, uint256 rewards);
     event NodeClaim(address node, uint256 rewards);
     event NodeReportVerification(address node, bytes32 attestationID, AttestationResult result);
+    event NodeReportVerificationBatch(bytes32 attestationID, VerificationInfo[] infos);
 
     // delegation
     event Delegate(uint256 tokenID, address to);
@@ -179,16 +193,16 @@ interface IProtocolService {
     function claimMaliciousTeeRewards(bytes32 attestationID) external;
 
     /**
-     * @notice Tee reports attestation. The same attestation can only be reported once.
+     * @notice Tee reports attestations. The same attestation can only be reported once.
      *
      * @dev Only staked tee role.
-     * @dev Emits `TeeReportAttestation`.
+     * @dev Emits `TeeReportAttestations`.
      * @dev A request to apply for VRF will be sent to chainlink.
      * @dev After receiving the callback from chainlink, emits `ConfirmVrfNodes`.
      *
-     * @param attestation: attestation to be reported.
+     * @param attestationInfos: attestations to be reported.
      */
-    function teeReportAttestation(string memory attestation) external;
+    function teeReportAttestations(string[] memory attestationInfos) external;
 
     /**
      * @notice In order to save costs more efficiently when selecting nodes in VRF,

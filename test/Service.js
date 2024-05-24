@@ -48,7 +48,7 @@ describe("Service", function () {
         service = await ProtocolService.deploy(carv.address, nftAddr, vaultAddr, coordinator.address);
 
         await vault.initialize(owner.address, nftAddr, serviceAddr)
-        await setting.initialize({
+        await setting.updateSettings({
             maxVrfActiveNodes: 2000,
             nodeMinOnlineDuration: 21600, // 6 hours
             nodeVerifyDuration: 1800,  // 30 minutes
