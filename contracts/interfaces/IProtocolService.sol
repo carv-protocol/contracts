@@ -69,7 +69,6 @@ interface IProtocolService {
      * `invalid`: The number of votes that this attestation is considered invalid (voted by the verifier node)
      * `slashed`: Has this attestation been slashed?
      * `deadline`: Deadline for collecting verification
-     * `requestID`: request ID of chainlink VRF
      * `vrfChosen`: The currently randomly selected verification nodes
      * `verifiedNode`: Records whether a node has reported verification
      */
@@ -80,7 +79,6 @@ interface IProtocolService {
         uint16 malicious;
         bool slashed;
         uint256 deadline;
-        uint256 requestID;
         uint16[] vrfChosen;
         mapping(address => bool) verifiedNode;
     }
@@ -93,15 +91,31 @@ interface IProtocolService {
         bool nativePayment;
     }
 
+    struct VerificationData {
+        bytes32 attestationID;
+        AttestationResult result;
+        uint16 index;
+    }
+
+    struct VerificationInfo {
+        AttestationResult result;
+        uint16 index;
+        address signer;
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+    }
+
     // admin
     event UpdateVrfConfig(VrfConfigData config);
+    event UpdateSettingsAddress(address settings);
 
     // tee
     event TeeStake(address tee, uint256 amount);
     event TeeUnstake(address tee, uint256 amount);
     event TeeSlash(address tee, bytes32 attestationID, uint256 amount);
     event ClaimMaliciousTeeRewards(address verifer, uint256 amount);
-    event TeeReportAttestation(address tee, bytes32 attestationID, uint256 requestID, string attestation);
+    event TeeReportAttestations(address tee, bytes32[] attestationIDs, string[] attestationInfos, uint256 requestID);
     event ConfirmVrfNodes(uint256 requestId, uint16[] vrfChosen, uint256 deadline);
 
     // node
@@ -111,6 +125,7 @@ interface IProtocolService {
     event NodeSlash(address node, bytes32 attestationID, uint256 rewards);
     event NodeClaim(address node, uint256 rewards);
     event NodeReportVerification(address node, bytes32 attestationID, AttestationResult result);
+    event NodeReportVerificationBatch(bytes32 attestationID, VerificationInfo[] infos);
 
     // delegation
     event Delegate(uint256 tokenID, address to);
@@ -120,6 +135,15 @@ interface IProtocolService {
 
     /*----------------------------------------------------------------------------------------------------------------*/
 
+    /**
+     * @notice update address of Settings contract.
+     *
+     * @dev Only admin role.
+     * @dev Emits `UpdateSettingsAddress`.
+     *
+     * @param settings_: address of Settings contract.
+     */
+    function updateSettingsAddress(address settings_) external;
     /**
      * @notice update VRF config.
      *
@@ -162,10 +186,9 @@ interface IProtocolService {
      *
      * @dev Emits `TeeSlash`.
      *
-     * @param tee: address of tee which is proven malicious.
      * @param attestationID: id of attestation which is proven malicious.
      */
-    function teeSlash(address tee, bytes32 attestationID) external;
+    function teeSlash(bytes32 attestationID) external;
 
     /**
      * @notice When an attestation reported by a tee is slashed,
@@ -179,16 +202,16 @@ interface IProtocolService {
     function claimMaliciousTeeRewards(bytes32 attestationID) external;
 
     /**
-     * @notice Tee reports attestation. The same attestation can only be reported once.
+     * @notice Tee reports attestations. The same attestation can only be reported once.
      *
      * @dev Only staked tee role.
-     * @dev Emits `TeeReportAttestation`.
+     * @dev Emits `TeeReportAttestations`.
      * @dev A request to apply for VRF will be sent to chainlink.
      * @dev After receiving the callback from chainlink, emits `ConfirmVrfNodes`.
      *
-     * @param attestation: attestation to be reported.
+     * @param attestationInfos: attestations to be reported.
      */
-    function teeReportAttestation(string memory attestation) external;
+    function teeReportAttestations(string[] memory attestationInfos) external;
 
     /**
      * @notice In order to save costs more efficiently when selecting nodes in VRF,
@@ -246,6 +269,12 @@ interface IProtocolService {
     function nodeSlash(address node, bytes32 attestationID, uint16 index) external;
 
     /**
+     * @notice If the node is online but hasn't reported verification that day,
+     * @notice the smart contract needs to be notified through this function to update the status of the node today.
+     */
+    function nodeReportDailyActive() external;
+
+    /**
      * @notice After an attestation is reported, a group of nodes will be randomly selected through chainlink's VRF.
      * @notice These nodes need to submit the verification within the specified time.
      * @notice When a node is selected by VRF, the proof is submitted by calling `nodeReportVerification`.
@@ -260,10 +289,13 @@ interface IProtocolService {
     function nodeReportVerification(bytes32 attestationID, uint16 index, AttestationResult result) external;
 
     /**
-     * @notice If the node is online but hasn't reported verification that day,
-     * @notice the smart contract needs to be notified through this function to update the status of the node today.
+     * @notice Batch reporting verification.
+     * @notice One address can collect multiple verifications and delegate reporting them in batches,
+     * @notice following the eip-712.
+     *
+     * @dev Emits `NodeReportVerificationBatch`.
      */
-    function nodeReportDailyActive() external;
+    function nodeReportVerificationBatch(bytes32 attestationID, VerificationInfo[] calldata infos) external;
 
     /**
      * @notice If the NFT holder doesn't want to run the node to report the verification himself,
@@ -318,4 +350,14 @@ interface IProtocolService {
      * @return claimed: whether this tokenID has already claimed rewards
      */
     function checkClaimed(uint256 tokenID) external view returns (bool);
+
+    /**
+     * @notice Get the index of today.
+     */
+    function todayIndex() external view returns (uint32);
+
+    /**
+     * @notice Get the offset of today.
+     */
+    function todayOffset() external view returns (uint256);
 }

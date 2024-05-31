@@ -1,81 +1,65 @@
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { E, E18, deployToken} = require("./Common")
 
 describe("veCarvToken", function () {
 
-    function E(x, d) {
-        return ethers.BigNumber.from("10").pow(d).mul(x)
-    }
-
-    function E18(x) {
-        return ethers.BigNumber.from("1000000000000000000").mul(x)
-    }
-
-    async function deploy() {
-        const [owner, alice, bob] = await ethers.getSigners();
-
-        const CarvToken = await ethers.getContractFactory("CarvToken");
-        const veCarvToken = await ethers.getContractFactory("veCarvToken");
-
-        const carv = await CarvToken.deploy(owner.address);
-        const veCarv = await veCarvToken.deploy(carv.address, owner.address);
-
-        return { carv, veCarv, owner, alice, bob };
-    }
-
-    describe("Carv", function () {
-        it("mint", async function () {
-            const { carv, veCarv, owner } = await deploy();
-            expect(await carv.balanceOf(owner.address)).to.equal(E18(1000000000));
-        });
+    it("mint", async function () {
+        const { carv, veCarv, owner } = await deployToken();
+        expect(await carv.balanceOf(owner.address)).to.equal(E18(1000000000));
     });
 
-    describe("veCarv", function () {
-        it("deposit", async function () {
-            const { carv, veCarv, owner } = await deploy();
+    it("deposit", async function () {
+        const { carv, veCarv, owner } = await deployToken();
+        await carv.approve(veCarv.address, E18(1000))
+        await veCarv.deposit(E18(1000));
+        expect(await veCarv.balanceOf(owner.address)).to.equal(E18(1000));
+    });
 
-            await carv.approve(veCarv.address, E18(1000))
-            await veCarv.deposit(E18(1000));
+    it("withdraw", async function () {
+        const { carv, veCarv, owner } = await deployToken();
+        await expect(carv.approve(veCarv.address, E18(1000))).not.to.be.reverted
+        await expect(veCarv.deposit(E18(1000))).not.to.be.reverted
+        await expect(veCarv.withdraw(E18(100))).not.to.be.reverted
+        expect(await veCarv.balanceOf(owner.address)).to.equal(E18(900));
+        expect((await veCarv.withdrawInfos(1)).amount).to.equal(E18(99));
+        expect((await veCarv.withdrawInfos(1)).canceledOrClaimed).to.equal(false);
 
-            expect(await veCarv.balanceOf(owner.address)).to.equal(E18(1000));
-        });
+        await expect(veCarv.cancelWithdraw(1)).not.to.be.reverted
+        expect(await veCarv.balanceOf(owner.address)).to.equal(E18(999));
+        expect((await veCarv.withdrawInfos(1)).canceledOrClaimed).to.equal(true);
+    });
 
-        it("withdraw", async function () {
-            const { carv, veCarv, owner } = await deploy();
+    it("claim", async function () {
+        async function depositAndWithdraw() {
+            await expect(carv.transfer(alice.address, E18(1000))).not.to.be.reverted
+            await expect(carv.connect(alice).approve(veCarv.address, E18(1000))).not.to.be.reverted
+            await expect(veCarv.connect(alice).deposit(E18(1000))).not.to.be.reverted
+            expect(await veCarv.balanceOf(alice.address)).to.equal(E18(1000))
+            await expect(veCarv.connect(alice).withdraw(E18(1000))).not.to.be.reverted
+        }
 
-            await carv.approve(veCarv.address, E18(1000))
-            await veCarv.deposit(E18(1000));
-            await veCarv.withdraw(E18(100))
+        const { carv, veCarv, owner, alice } = await deployToken();
 
-            expect(await veCarv.balanceOf(owner.address)).to.equal(E18(900));
-            expect((await veCarv.withdrawInfos(1)).amount).to.equal(E18(99));
-            expect((await veCarv.withdrawInfos(1)).canceledOrClaimed).to.equal(false);
+        const days15 = 15 * 24 * 60 * 60;
+        const days90 = 90 * 24 * 60 * 60;
+        const days150 = 150 * 24 * 60 * 60;
 
-            await veCarv.cancelWithdraw(1)
-            expect(await veCarv.balanceOf(owner.address)).to.equal(E18(999));
-            expect((await veCarv.withdrawInfos(1)).canceledOrClaimed).to.equal(true);
-        });
+        await depositAndWithdraw()
+        await time.increase(days15);
+        await expect(veCarv.connect(alice).claim(1)).not.to.be.reverted;
+        await expect(await carv.balanceOf(alice.address)).to.equal(E(24975, 16))
+        await expect(await carv.connect(alice).transfer(owner.address, E(24975, 16)))
 
-        it("claim", async function () {
-            const { carv, veCarv, owner, alice } = await deploy();
+        await depositAndWithdraw()
+        await time.increase(days90);
+        await expect(veCarv.connect(alice).claim(2)).not.to.be.reverted;
+        await expect(await carv.balanceOf(alice.address)).to.equal(E(59940, 16))
+        await expect(await carv.connect(alice).transfer(owner.address, E(59940, 16)))
 
-            await carv.transfer(alice.address, E18(1000));
-
-            await carv.connect(alice).approve(veCarv.address, E18(1000))
-            await veCarv.connect(alice).deposit(E18(1000));
-
-            expect(await veCarv.balanceOf(alice.address)).to.equal(E18(1000));
-            await veCarv.connect(alice).withdraw(E18(1000))
-
-            const daysLater15 = (await time.latest()) + 15 * 24 * 60 * 60;
-            const daysLater90 = (await time.latest()) + 90 * 24 * 60 * 60;
-            const daysLater150 = (await time.latest()) + 150 * 24 * 60 * 60;
-
-            await time.increaseTo(daysLater15);
-            await expect(veCarv.connect(alice).claim(1)).not.to.be.reverted;
-            await expect(await carv.balanceOf(alice.address)).to.equal(E(24975, 16))
-
-        });
+        await depositAndWithdraw()
+        await time.increase(days150);
+        await expect(veCarv.connect(alice).claim(3)).not.to.be.reverted;
+        await expect(await carv.balanceOf(alice.address)).to.equal(E(99900, 16))
     });
 });

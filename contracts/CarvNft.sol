@@ -21,7 +21,7 @@ contract CarvNft is ICarvNft, ERC721 {
     address public service;
     address public carvToken;
 
-    uint256 tokenIndex;
+    uint256 public tokenIndex;
     mapping(uint256 => uint256) public tokenIDMintedAt;
     mapping(uint256 => ClaimInfo) public claimInfos;
 
