@@ -83,14 +83,6 @@ interface IProtocolService {
         mapping(address => bool) verifiedNode;
     }
 
-    struct VrfConfigData {
-        bytes32 keyHash;
-        uint256 subId;
-        uint16 requestConfirmations;
-        uint32 callbackGasLimit;
-        bool nativePayment;
-    }
-
     struct VerificationData {
         bytes32 attestationID;
         AttestationResult result;
@@ -107,7 +99,7 @@ interface IProtocolService {
     }
 
     // admin
-    event UpdateVrfConfig(VrfConfigData config);
+    event UpdateVrfAddress(address vrf);
     event UpdateSettingsAddress(address settings);
 
     // tee
@@ -145,14 +137,14 @@ interface IProtocolService {
      */
     function updateSettingsAddress(address settings_) external;
     /**
-     * @notice update VRF config.
+     * @notice update address of CarvVrf contract.
      *
      * @dev Only admin role.
-     * @dev Emits `UpdateVrfConfig`.
+     * @dev Emits `UpdateVrfAddress`.
      *
-     * @param config: VrfConfigData.
+     * @param carvVrf_: address of CarvVrf contract.
      */
-    function updateVrfConfig(VrfConfigData calldata config) external;
+    function updateVrfAddress(address carvVrf_) external;
 
     /**
      * @notice Tee needs to stake CARVs before reporting attestation,

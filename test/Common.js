@@ -54,7 +54,7 @@ exports.deploySettings = async function deploySettings() {
 }
 
 exports.deployAll = async function () {
-    let carv, veCarv, nft, vault, setting, service, coordinator
+    let carv, veCarv, nft, vault, setting, vrf, proxy, proxyAdmin, service, coordinator
 
     let signers = await ethers.getSigners();
 
@@ -63,23 +63,31 @@ exports.deployAll = async function () {
     const CarvNft = await ethers.getContractFactory("CarvNft");
     const Vault = await ethers.getContractFactory("Vault");
     const Settings = await ethers.getContractFactory("Settings");
+    const CarvVrf = await ethers.getContractFactory("CarvVrf");
     const ProtocolService = await ethers.getContractFactory("ProtocolService");
+    const Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const MockAggregator = await ethers.getContractFactory("Aggregator");
     const MockVRFCoordinator = await ethers.getContractFactory("VRFCoordinator");
 
     const vaultAddr = contractAddr(signers[0].address, (await signers[0].getTransactionCount()) + 5)
-    const serviceAddr = contractAddr(signers[0].address, (await signers[0].getTransactionCount()) + 7)
+    const proxyAddr = contractAddr(signers[0].address, (await signers[0].getTransactionCount()) + 10)
 
     const aggregator = await MockAggregator.deploy();
     coordinator = await MockVRFCoordinator.deploy();
     carv = await CarvToken.deploy(signers[0].address);
     veCarv = await veCarvToken.deploy(carv.address, vaultAddr);
-    nft = await CarvNft.deploy(carv.address, vaultAddr, serviceAddr);
+    nft = await CarvNft.deploy(carv.address, vaultAddr, proxyAddr);
     vault = await Vault.deploy(carv.address, veCarv.address);
     setting = await Settings.deploy();
-    service = await ProtocolService.deploy(carv.address, nft.address, vault.address, coordinator.address);
+    vrf = await CarvVrf.deploy(coordinator.address);
+    service = await ProtocolService.deploy();
+    proxyAdmin = await ProxyAdmin.deploy(signers[0].address);
+    proxy = await Proxy.deploy(service.address, proxyAdmin.address, ethers.utils.toUtf8Bytes(""))
+    proxy = ProtocolService.attach(proxy.address)
+    await proxy.initialize(carv.address, nft.address, vault.address)
 
-    await vault.initialize(signers[0].address, nft.address, service.address)
+    await vault.initialize(signers[0].address, nft.address, proxy.address)
     await setting.updateSettings({
         maxVrfActiveNodes: 2000,
         nodeMinOnlineDuration: 21600, // 6 hours
@@ -94,16 +102,20 @@ exports.deployAll = async function () {
     })
 
     await vault.updateAggregatorAddress(aggregator.address);
-    await service.updateVrfConfig({
+    await vrf.updateVrfConfig({
         keyHash: "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae",
         subId: 100,
         requestConfirmations: 3,
         callbackGasLimit: 10000,
+        numWords: 1,
         nativePayment: true
     })
-    await service.updateSettingsAddress(setting.address)
+    await vrf.grantCaller(proxy.address)
 
-    return [carv, veCarv, nft, vault, setting, service, coordinator, signers]
+    await proxy.updateSettingsAddress(setting.address)
+    await proxy.updateVrfAddress(vrf.address)
+
+    return [carv, veCarv, nft, vault, setting, vrf, proxy, proxyAdmin, service, coordinator, signers]
 }
 
 function contractAddr(deployer, nonce) {

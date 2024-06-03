@@ -1,23 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.20;
 
-import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
-import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
-
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IProtocolService.sol";
+import "./interfaces/ICarvVrfCallback.sol";
+import "./interfaces/ICarvVrf.sol";
 import "./interfaces/ISettings.sol";
 import "./interfaces/IVault.sol";
 import "./Adminable.sol";
 
-contract ProtocolService is IProtocolService, VRFConsumerBaseV2Plus, Adminable {
+contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
     using SafeERC20 for IERC20;
 
-    uint32 public constant VRF_NUM_WORDS = 1;
     uint16 public constant MAX_UINT16 = 65535; // type(uint16).max;
-
     bytes32 public constant EIP712_DOMAIN_HASH = keccak256(
         abi.encode(
             keccak256("EIP712Domain(string name,string version,uint256 chainId)"),
@@ -27,12 +24,11 @@ contract ProtocolService is IProtocolService, VRFConsumerBaseV2Plus, Adminable {
         )
     );
 
-    VrfConfigData public vrfConfig;
-
     address public vault;
     address public carvToken;
     address public carvNft;
     address public settings;
+    address public carvVrf;
 
     uint16 nodeIndex;
     uint16[] public activeVrfNodeList;
@@ -50,12 +46,13 @@ contract ProtocolService is IProtocolService, VRFConsumerBaseV2Plus, Adminable {
     mapping(uint32 => uint32) public globalDailyActiveNodes;
     mapping(address => mapping(uint32 => uint32)) public nodeDailyActive;
 
-    constructor(
-        address carvToken_, address carvNft_, address vault_, address vrf_
-    ) Adminable(msg.sender) VRFConsumerBaseV2Plus(vrf_) {
+    function initialize(
+        address carvToken_, address carvNft_, address vault_
+    ) public initializer {
         carvToken = carvToken_;
         carvNft = carvNft_;
         vault= vault_;
+        __Adminable_init(msg.sender);
     }
 
     function updateSettingsAddress(address settings_) external onlyAdmin {
@@ -63,9 +60,9 @@ contract ProtocolService is IProtocolService, VRFConsumerBaseV2Plus, Adminable {
         emit UpdateSettingsAddress(settings_);
     }
 
-    function updateVrfConfig(VrfConfigData calldata config) external onlyAdmin {
-        vrfConfig = config;
-        emit UpdateVrfConfig(config);
+    function updateVrfAddress(address carvVrf_) external onlyAdmin {
+        carvVrf = carvVrf_;
+        emit UpdateVrfAddress(carvVrf_);
     }
 
     // CARV to veCARV, stored in Vault
@@ -134,7 +131,7 @@ contract ProtocolService is IProtocolService, VRFConsumerBaseV2Plus, Adminable {
         require(tee.valid, "Invalid");
         tee.lastReportAt = block.timestamp;
 
-        uint256 requestId = _requestRandomWords();
+        uint256 requestId = ICarvVrf(carvVrf).requestRandomWords();
 
         bytes32[] memory attestationIDs = new bytes32[](attestationInfos.length);
         for (uint index = 0; index < attestationInfos.length; index++) {
@@ -344,24 +341,10 @@ contract ProtocolService is IProtocolService, VRFConsumerBaseV2Plus, Adminable {
 
     /*----------------------------------------- internal functions --------------------------------------------*/
 
-    // request Random Number (chainlink vrf)
-    function _requestRandomWords() internal returns (uint256) {
-        return s_vrfCoordinator.requestRandomWords(
-            VRFV2PlusClient.RandomWordsRequest({
-                keyHash: vrfConfig.keyHash,
-                subId: vrfConfig.subId,
-                requestConfirmations: vrfConfig.requestConfirmations,
-                callbackGasLimit: vrfConfig.callbackGasLimit,
-                numWords: VRF_NUM_WORDS,
-                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: vrfConfig.nativePayment}))
-            })
-        );
-    }
-
     // chainlink VRF callback function
     // According to random words, emit event to decide nodes verifying
-    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
-        require(randomWords.length >= VRF_NUM_WORDS, "Wrong randomWords");
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) external onlyCarvVrf override {
+        require(randomWords.length > 0, "Wrong randomWords");
 
         uint256 deadline = block.timestamp + ISettings(settings).nodeVerifyDuration();
         uint16[] memory vrfChosen = _vrfChooseNodes(randomWords[0]);
@@ -513,6 +496,11 @@ contract ProtocolService is IProtocolService, VRFConsumerBaseV2Plus, Adminable {
 
     modifier onlyNftOwner(uint256 tokenID) {
         require(IERC721(carvNft).ownerOf(tokenID) == msg.sender, "Not owner");
+        _;
+    }
+
+    modifier onlyCarvVrf() {
+        require(carvVrf == msg.sender, "Not carv vrf");
         _;
     }
 }
