@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.20;
 
-contract Adminable {
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+contract Adminable is Initializable {
     address public admin;
     mapping(address => bool) public teeRoles;
 
-    constructor(address admin_) {
+    function __Adminable_init(address admin_) internal onlyInitializing {
         admin = admin_;
     }
 
