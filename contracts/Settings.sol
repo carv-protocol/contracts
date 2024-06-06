@@ -13,18 +13,14 @@ contract Settings is ISettings, Ownable {
     uint256 public override minTeeStakeAmount;
     uint256 public override teeSlashAmount;
     uint256 public override teeUnstakeDuration;
+    uint256 public override minCommissionRateModifyInterval;
     uint64 public override nodeMaxMissVerifyCount;
-    uint32 public override commissionRate; // decimals: 4
     uint16 public override maxNodeWeights;
 
     constructor () Ownable(msg.sender) {}
 
     function updateSettings(SettingParams calldata params) external onlyOwner {
         _update(params);
-    }
-
-    function mulCommissionRate(uint256 value) external override view returns (uint256) {
-        return value * commissionRate / 1e4;
     }
 
     function _update(SettingParams calldata params) internal {
@@ -35,8 +31,8 @@ contract Settings is ISettings, Ownable {
         minTeeStakeAmount = params.minTeeStakeAmount;
         teeSlashAmount = params.teeSlashAmount;
         teeUnstakeDuration = params.teeUnstakeDuration;
+        minCommissionRateModifyInterval = params.minCommissionRateModifyInterval;
         nodeMaxMissVerifyCount = params.nodeMaxMissVerifyCount;
-        commissionRate = params.commissionRate;
         maxNodeWeights = params.maxNodeWeights;
 
         emit UpdateSettings(params);

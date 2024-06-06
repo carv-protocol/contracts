@@ -132,7 +132,7 @@ describe("Service", function () {
             0
         )
 
-        await expect(proxy.connect(alice).nodeClaim()).to.be.reverted
+        await expect(proxy.connect(alice).nodeClaim(alice.address)).to.be.reverted
         const hours8 = 8 * 60 * 60;
         await time.increase(hours8);
         await proxy.connect(alice).nodeReportDailyActive(alice.address)

@@ -13,8 +13,8 @@ describe("Settings", function () {
             minTeeStakeAmount: E18(1e5),  // 10,000 CARV
             teeSlashAmount: E18(100),      // 100 veCARV
             teeUnstakeDuration: 21600,   // 6 hours
+            minCommissionRateModifyInterval: 604800, // 1 week
             nodeMaxMissVerifyCount: 5,
-            commissionRate: 100,       // 1%
             maxNodeWeights: 100,
         })).not.to.be.reverted;
 
@@ -25,8 +25,8 @@ describe("Settings", function () {
         expect(await settings.minTeeStakeAmount()).to.equal(E18(1e5));
         expect(await settings.teeSlashAmount()).to.equal(E18(100));
         expect(await settings.teeUnstakeDuration()).to.equal(21600);
+        expect(await settings.minCommissionRateModifyInterval()).to.equal(604800);
         expect(await settings.nodeMaxMissVerifyCount()).to.equal(5);
-        expect(await settings.commissionRate()).to.equal(100);
         expect(await settings.maxNodeWeights()).to.equal(100);
     });
 

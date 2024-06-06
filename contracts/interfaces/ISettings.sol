@@ -16,7 +16,7 @@ interface ISettings {
      * `teeUnstakeDuration`: The minimum time duration between the time tee unstaking and the last time reporting the attestation.
      * `nodeMaxMissVerifyCount`: The maximum number of times a verifier node can miss verifications.
      *                           If it exceeds the limit, it will be forced exit.
-     * `commissionRate`: rate of commission, which is given by NFT holders to the verifier node
+     * `minCommissionRateModifyInterval`: The minimum time interval for verifier to modify commission rate
      * `maxNodeWeights`: The maximum number of delegators a verifier node can have.
      */
     struct SettingParams {
@@ -27,8 +27,8 @@ interface ISettings {
         uint256 minTeeStakeAmount;
         uint256 teeSlashAmount;
         uint256 teeUnstakeDuration;
+        uint256 minCommissionRateModifyInterval;
         uint64 nodeMaxMissVerifyCount;
-        uint32 commissionRate;
         uint16 maxNodeWeights;
     }
 
@@ -42,14 +42,6 @@ interface ISettings {
      */
     function updateSettings(SettingParams calldata params) external;
 
-    /**
-     * @notice Multiply the commission rate by value.
-     *
-     * @param value: to be multiplied by commission rate
-     * @return commission: commission of value.
-     */
-    function mulCommissionRate(uint256 value) external view returns (uint256);
-
     function maxVrfActiveNodes() external view returns (uint256);
     function nodeMinOnlineDuration() external view returns (uint256);
     function nodeVerifyDuration() external view returns (uint256);
@@ -58,6 +50,6 @@ interface ISettings {
     function teeSlashAmount() external view returns (uint256);
     function teeUnstakeDuration() external view returns (uint256);
     function nodeMaxMissVerifyCount() external view returns (uint64);
-    function commissionRate() external view returns (uint32);
+    function minCommissionRateModifyInterval() external view returns (uint256);
     function maxNodeWeights() external view returns (uint16);
 }

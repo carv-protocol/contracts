@@ -29,6 +29,8 @@ interface IProtocolService {
      * `selfClaimedRewards`: The rewards claimed by the node itself
      * `delegationRewards`: The rewards of the node’s delegator
      * `lastEnterTime`: The time when the node last called `nodeEnter` to go online
+     * `commissionRate`: rate of commission, which is given by NFT holders to the verifier node.(decimals: 4)
+     * `commissionRateLastModifyAt`: timestamp of last modifying commission rate
      */
     struct NodeInfo {
         uint16 id;
@@ -40,6 +42,9 @@ interface IProtocolService {
         uint256 selfClaimedRewards;
         uint256 delegationRewards;
         uint256 lastEnterTime;
+        address claimer;
+        uint32 commissionRate; // decimals: 4
+        uint256 commissionRateLastModifyAt;
     }
 
     /**
@@ -124,7 +129,9 @@ interface IProtocolService {
     event NodeActivate(address node);
     event NodeClear(address node);
     event NodeSlash(address node, bytes32 attestationID, uint256 rewards);
-    event NodeClaim(address node, uint256 rewards);
+    event NodeModifyCommissionRate(address node, uint32 commissionRate);
+    event NodeSetClaimer(address node, address claimer);
+    event NodeClaim(address node, address claimer, uint256 rewards);
     event NodeReportVerification(address node, bytes32 attestationID, AttestationResult result);
     event NodeReportVerificationBatch(bytes32 attestationID, VerificationInfo[] infos);
 
@@ -244,6 +251,15 @@ interface IProtocolService {
     function nodeExit() external;
 
     /**
+     * @notice Modify the commission rate of verifier node
+     *
+     * @dev Emits `NodeModifyCommissionRate`.
+     *
+     * @param commissionRate: rate of commission, which is given by NFT holders to the verifier node
+     */
+    function nodeModifyCommissionRate(uint32 commissionRate) external;
+
+    /**
      * @notice Similar to `nodeEnter`,
      * @notice but the txn can be broadcast to the chain by other address after being authenticated by the node.
      * @notice Compared with the `nodeEnter`, it is gasless for the verifier node.
@@ -255,11 +271,11 @@ interface IProtocolService {
      *
      * @param replacedNode: address of the node that needs to be replaced by your node
      *                  only works when the `activeVrfNodeList` is full
-     * @param date: date of today
+     * @param expiredAt: transaction expiration time
      * @param signer: address of verifier node ready to enter
      */
     function nodeEnterWithSignature(
-        address replacedNode, uint32 date, address signer, uint8 v, bytes32 r, bytes32 s
+        address replacedNode, uint256 expiredAt, address signer, uint8 v, bytes32 r, bytes32 s
     ) external;
 
     /**
@@ -270,11 +286,42 @@ interface IProtocolService {
      *
      * @dev Emits `NodeClear`.
      *
-     * @param date: date of today
+     * @param expiredAt: transaction expiration time
      * @param signer: address of verifier node ready to exit
      */
     function nodeExitWithSignature(
-        uint32 date, address signer, uint8 v, bytes32 r, bytes32 s
+        uint256 expiredAt, address signer, uint8 v, bytes32 r, bytes32 s
+    ) external;
+
+    /**
+     * @notice Similar to `nodeModifyCommissionRate`,
+     * @notice but the txn can be broadcast to the chain by other address after being authenticated by the node.
+     * @notice Compared with the `nodeModifyCommissionRate`, it is gasless for the verifier node.
+     * @notice following the eip-712.
+     *
+     * @dev Emits `NodeModifyCommissionRate`.
+     *
+     * @param commissionRate: rate of commission, which is given by NFT holders to the verifier node
+     * @param expiredAt: transaction expiration time
+     * @param signer: address of verifier node
+     */
+    function nodeModifyCommissionRateWithSignature(
+        uint32 commissionRate, uint256 expiredAt, address signer, uint8 v, bytes32 r, bytes32 s
+    ) external;
+
+    /**
+     * @notice Specify the address that can claim rewards of this verifier node
+     * @notice it is gasless for the verifier node.
+     * @notice following the eip-712.
+     *
+     * @dev Emits `NodeSetClaimer`.
+     *
+     * @param claimer: address of whom can claim reward of this verifier
+     * @param expiredAt: transaction expiration time
+     * @param signer: address of verifier node
+     */
+    function nodeSetRewardClaimerWithSignature(
+        address claimer, uint256 expiredAt, address signer, uint8 v, bytes32 r, bytes32 s
     ) external;
 
     /**
@@ -283,8 +330,10 @@ interface IProtocolService {
      * @notice Only when the node is online for more than 6 hours/day will there be reward.
      *
      * @dev Emits `NodeClaim`.
+     *
+     * @param node: address of node to claim reward
      */
-    function nodeClaim() external;
+    function nodeClaim(address node) external;
 
     /**
      * @notice Anyone can initiate a slash for a miss reporting of a node.

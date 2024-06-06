@@ -96,8 +96,8 @@ exports.deployAll = async function () {
         minTeeStakeAmount: e18(1e5),  // 10,000 CARV
         teeSlashAmount: e18(100),      // 100 veCARV
         teeUnstakeDuration: 21600,   // 6 hours
+        minCommissionRateModifyInterval: 604800, // 1 week
         nodeMaxMissVerifyCount: 5,
-        commissionRate: 100,       // 1%
         maxNodeWeights: 100,
     })
 

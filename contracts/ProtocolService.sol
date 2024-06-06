@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Multicall.sol";
 import "./interfaces/IProtocolService.sol";
 import "./interfaces/ICarvVrfCallback.sol";
 import "./interfaces/ICarvVrf.sol";
@@ -10,7 +11,7 @@ import "./interfaces/ISettings.sol";
 import "./interfaces/IVault.sol";
 import "./Adminable.sol";
 
-contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
+contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multicall {
 
     uint16 public constant MAX_UINT16 = 65535; // type(uint16).max;
     bytes32 public constant EIP712_DOMAIN_HASH = keccak256(
@@ -47,8 +48,6 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
     mapping(address => mapping(bytes32 => bool)) public nodeClaimedTeeRewards;
     mapping(uint32 => uint32) public globalDailyActiveNodes;
     mapping(address => mapping(uint32 => uint32)) public nodeDailyActive;
-    mapping(address => mapping(uint32 => bool)) public nodeEnteredWithSigByDate;
-    mapping(address => mapping(uint32 => bool)) public nodeExitedWithSigByDate;
 
     function initialize(
         address carvToken_, address carvNft_, address vault_
@@ -157,58 +156,86 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
         _nodeExit(msg.sender);
     }
 
-    function nodeEnterWithSignature(
-        address replacedNode, uint32 date, address signer, uint8 v, bytes32 r, bytes32 s
+    function nodeModifyCommissionRate(uint32 commissionRate) external {
+        _nodeModifyCommissionRate(msg.sender, commissionRate);
+    }
+
+    function nodeModifyCommissionRateWithSignature(
+        uint32 commissionRate, uint256 expiredAt, address signer, uint8 v, bytes32 r, bytes32 s
     ) external {
         bytes32 hashStruct = keccak256(
             abi.encode(
                 keccak256(
-                    "NodeEnterData(address replacedNode,uint32 date)"
+                    "NodeModifyCommissionRateData(uint32 commissionRate,uint256 expiredAt)"
                 ),
-                replacedNode,
-                date
+                commissionRate,
+                expiredAt
             )
         );
-        _checkSignature(hashStruct, signer, v, r, s);
-        require(date == todayIndex(), "Date expired");
+        _checkSignature(expiredAt, hashStruct, signer, v, r, s);
+        _nodeModifyCommissionRate(signer, commissionRate);
+    }
 
-        // 1 times per day
-        require(!nodeEnteredWithSigByDate[signer][date], "Already entered with signature");
-        nodeEnteredWithSigByDate[signer][date] = true;
+    function nodeEnterWithSignature(
+        address replacedNode, uint256 expiredAt, address signer, uint8 v, bytes32 r, bytes32 s
+    ) external {
+        bytes32 hashStruct = keccak256(
+            abi.encode(
+                keccak256(
+                    "NodeEnterData(address replacedNode,uint256 expiredAt)"
+                ),
+                replacedNode,
+                expiredAt
+            )
+        );
+        _checkSignature(expiredAt, hashStruct, signer, v, r, s);
         _nodeEnter(signer, replacedNode);
     }
 
     function nodeExitWithSignature(
-        uint32 date, address signer, uint8 v, bytes32 r, bytes32 s
+        uint256 expiredAt, address signer, uint8 v, bytes32 r, bytes32 s
     ) external {
         bytes32 hashStruct = keccak256(
             abi.encode(
                 keccak256(
-                    "NodeExitData(uint32 date)"
+                    "NodeExitData(uint256 expiredAt)"
                 ),
-                date
+                expiredAt
             )
         );
-        _checkSignature(hashStruct, signer, v, r, s);
-        require(date == todayIndex(), "Date expired");
-
-        // 1 times per day
-        require(!nodeExitedWithSigByDate[signer][date], "Already exited with signature");
-        nodeExitedWithSigByDate[signer][date] = true;
+        _checkSignature(expiredAt, hashStruct, signer, v, r, s);
         _nodeExit(signer);
     }
 
-    function nodeClaim() external {
-        NodeInfo storage nodeInfo = nodeInfos[msg.sender];
+    function nodeSetRewardClaimerWithSignature(
+        address claimer, uint256 expiredAt, address signer, uint8 v, bytes32 r, bytes32 s
+    ) external {
+        bytes32 hashStruct = keccak256(
+            abi.encode(
+                keccak256(
+                    "NodeSetRewardClaimerData(address claimer,uint256 expiredAt)"
+                ),
+                claimer,
+                expiredAt
+            )
+        );
+        _checkSignature(expiredAt, hashStruct, signer, v, r, s);
+        nodeInfos[signer].claimer = claimer;
+        emit NodeSetClaimer(signer, claimer);
+    }
+
+    function nodeClaim(address node) external {
+        NodeInfo storage nodeInfo = nodeInfos[node];
         require(nodeInfo.id > 0, "Not register");
-        _confirmNodeRewards(msg.sender);
+        require(msg.sender == node || msg.sender == nodeInfo.claimer, "Cannot claim");
+        _confirmNodeRewards(node);
         require(nodeInfo.selfTotalRewards > int256(nodeInfo.selfClaimedRewards), "No reward");
 
         uint256 rewards = uint256(nodeInfo.selfTotalRewards) - nodeInfo.selfClaimedRewards;
         nodeInfo.selfClaimedRewards = uint256(nodeInfo.selfTotalRewards);
 
         IVault(vault).rewardsWithdraw(msg.sender, rewards);
-        emit NodeClaim(msg.sender, rewards);
+        emit NodeClaim(node, msg.sender, rewards);
     }
 
     function nodeSlash(address node, bytes32 attestationID, uint16 index) external {
@@ -276,7 +303,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
                     infos[i].index
                 )
             );
-            _checkSignature(hashStruct, infos[i].signer, infos[i].v, infos[i].r, infos[i].s);
+            _checkSignature(block.timestamp, hashStruct, infos[i].signer, infos[i].v, infos[i].r, infos[i].s);
             _checkNodeInfos(attestationID, infos[i].signer, infos[i].index);
 
             if (infos[i].result == AttestationResult.Valid) {
@@ -448,6 +475,18 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
         _nodeClear(node);
     }
 
+    function _nodeModifyCommissionRate(address node, uint32 commissionRate) internal {
+        NodeInfo storage nodeInfo = nodeInfos[node];
+        require(nodeInfo.id > 0, "Not register");
+        require(
+            nodeInfo.commissionRateLastModifyAt + ISettings(settings).minCommissionRateModifyInterval() < block.timestamp,
+            "Not meet min commission rate modify interval"
+        );
+        nodeInfo.commissionRate = commissionRate;
+        nodeInfo.commissionRateLastModifyAt = block.timestamp;
+        emit NodeModifyCommissionRate(node, commissionRate);
+    }
+
     function _nodeActivate(address node, uint16 listIndex) internal {
         NodeInfo storage info = nodeInfos[node];
         info.listIndex = listIndex;
@@ -510,7 +549,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
                 continue;
             }
             uint256 unitReward = IVault(vault).totalRewardByDate(dateIndex) / globalDailyActiveNodes[dateIndex];
-            uint256 commissionReward = ISettings(settings).mulCommissionRate(unitReward) * nodeDailyActive[node][dateIndex];
+            uint256 commissionReward = (unitReward * nodeInfo.commissionRate / 1e4) * nodeDailyActive[node][dateIndex];
             nodeInfo.selfTotalRewards += int256(commissionReward);
             nodeInfo.delegationRewards += unitReward - commissionReward;
         }
@@ -524,7 +563,10 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
         require(attestation.vrfChosenID > 0, "Waiting vrf");
     }
 
-    function _checkSignature(bytes32 hashStruct, address signer, uint8 v, bytes32 r, bytes32 s) internal pure {
+    function _checkSignature(
+        uint256 expiredAt, bytes32 hashStruct, address signer, uint8 v, bytes32 r, bytes32 s
+    ) internal view {
+        require(expiredAt >= block.timestamp, "Expired");
         bytes32 digest = keccak256(
             abi.encodePacked("\x19\x01", EIP712_DOMAIN_HASH, hashStruct)
         );
