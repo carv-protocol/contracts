@@ -3,6 +3,13 @@ pragma solidity ^0.8.20;
 
 interface IProtocolService {
 
+    /**
+     * @notice This enum represents result of an attestation reported by verifier
+     *
+     * `Valid`: This attestation can be parsed successfully and is not malicious
+     * `Invalid`: This attestation cannot be parsed successfully
+     * `Malicious`: This attestation can be parsed successfully but is malicious
+     */
     enum AttestationResult {
         Valid,
         Invalid,
@@ -83,12 +90,16 @@ interface IProtocolService {
         mapping(address => bool) verifiedNode;
     }
 
-    struct VerificationData {
-        bytes32 attestationID;
-        AttestationResult result;
-        uint16 index;
-    }
-
+    /**
+     * @notice This struct represents information of an verification with signature
+     *
+     * `result`: result of this attestation
+     * `index`: index of this node in activeVrfNodeList
+     * `signer`: address of this node (sign the Data to call contract gasless)
+     * `v`: v of signature signed by signer
+     * `r`: r of signature signed by signer
+     * `s`: s of signature signed by signer
+     */
     struct VerificationInfo {
         AttestationResult result;
         uint16 index;
@@ -208,7 +219,7 @@ interface IProtocolService {
     /**
      * @notice In order to save costs more efficiently when selecting nodes in VRF,
      * @notice we designed a data structure `activeVrfNodeList` for this purpose.
-     * @notice `activeVrfNodeList` stores the top 1000 active nodes with delegation weight,
+     * @notice `activeVrfNodeList` stores up to 2000 active nodes with delegation weight,
      * @notice and each time VRF will select from these nodes.
      *
      * @notice Nodes need to activate themselves by calling nodeEnter of the smart contract
@@ -221,10 +232,10 @@ interface IProtocolService {
      * @dev If any node is kicked and replaced by your node. Emits `NodeClear`.
      * @dev If any node calls nodeEnter for the first time. Emits `NodeRegister`.
      *
-     * @param replaced: address of the node that needs to be replaced by your node
+     * @param replacedNode: address of the node that needs to be replaced by your node
      *                  only works when the `activeVrfNodeList` is full
      */
-    function nodeEnter(address replaced) external;
+    function nodeEnter(address replacedNode) external;
 
     /**
      * @notice Exits by node itself, and verification cannot be reported after exiting.
@@ -235,13 +246,43 @@ interface IProtocolService {
     function nodeExit() external;
 
     /**
+     * @notice Similar to `nodeEnter`,
+     * @notice but the txn can be broadcast to the chain by other address after being authenticated by the node.
+     * @notice Compared with the `nodeEnter`, it is gasless for the verifier node.
+     * @notice following the eip-712.
+     *
+     * @dev Emits `NodeActivate`.
+     * @dev If any node is kicked and replaced by your node. Emits `NodeClear`.
+     * @dev If any node calls nodeEnter for the first time. Emits `NodeRegister`.
+     *
+     * @param replacedNode: address of the node that needs to be replaced by your node
+     *                  only works when the `activeVrfNodeList` is full
+     * @param date: date of today
+     * @param signer: address of verifier node ready to enter
+     */
+    function nodeEnterWithSignature(
+        address replacedNode, uint32 date, address signer, uint8 v, bytes32 r, bytes32 s
+    ) external;
+
+    /**
+     * @notice Similar to `nodeExit`,
+     * @notice but the txn can be broadcast to the chain by other address after being authenticated by the node.
+     * @notice Compared with the `nodeExit`, it is gasless for the verifier node.
+     * @notice following the eip-712.
+     *
+     * @dev Emits `NodeClear`.
+     *
+     * @param date: date of today
+     * @param signer: address of verifier node ready to exit
+     */
+    function nodeExitWithSignature(
+        uint32 date, address signer, uint8 v, bytes32 r, bytes32 s
+    ) external;
+
+    /**
      * @notice Claim reward of node.
      * @notice The reward for reporting verifications is divided into two parts: node's reward and delegators' reward
-     * @notice Only when the node is online for more than 6 hours will there be reward.
-     *
-     * @notice Assume that a node `enter` at time t0 and `exit` at time t1.
-     * @notice During the online period, it is selected by VRF s0 times and misses verification s1 times.
-     * @notice The income is (t1-t0)*(1-s1*k/s0), where K is the penalty coefficient (k>1).
+     * @notice Only when the node is online for more than 6 hours/day will there be reward.
      *
      * @dev Emits `NodeClaim`.
      */
@@ -257,14 +298,17 @@ interface IProtocolService {
      *
      * @param node: address of node to be slashed
      * @param attestationID: id of attestation that node miss reporting
+     * @param index: index of this node in vrfChosen list of this attestation
      */
     function nodeSlash(address node, bytes32 attestationID, uint16 index) external;
 
     /**
      * @notice If the node is online but hasn't reported verification that day,
      * @notice the smart contract needs to be notified through this function to update the status of the node today.
+     *
+     * @param node: address of the node to report daily active
      */
-    function nodeReportDailyActive() external;
+    function nodeReportDailyActive(address node) external;
 
     /**
      * @notice After an attestation is reported, a group of nodes will be randomly selected through chainlink's VRF.
@@ -276,6 +320,7 @@ interface IProtocolService {
      * @dev Emits `NodeReportVerification`.
      *
      * @param attestationID: id of attestation
+     * @param index: index of this node in vrfChosen list of this attestation
      * @param result: Whether the attestation is valid after being checked by the node.
      */
     function nodeReportVerification(bytes32 attestationID, uint16 index, AttestationResult result) external;

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IProtocolService.sol";
@@ -12,7 +11,6 @@ import "./interfaces/IVault.sol";
 import "./Adminable.sol";
 
 contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
-    using SafeERC20 for IERC20;
 
     uint16 public constant MAX_UINT16 = 65535; // type(uint16).max;
     bytes32 public constant EIP712_DOMAIN_HASH = keccak256(
@@ -45,6 +43,8 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
     mapping(address => mapping(bytes32 => bool)) public nodeClaimedTeeRewards;
     mapping(uint32 => uint32) public globalDailyActiveNodes;
     mapping(address => mapping(uint32 => uint32)) public nodeDailyActive;
+    mapping(address => mapping(uint32 => bool)) public nodeEnteredWithSigByDate;
+    mapping(address => mapping(uint32 => bool)) public nodeExitedWithSigByDate;
 
     function initialize(
         address carvToken_, address carvNft_, address vault_
@@ -147,29 +147,52 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
     }
 
     function nodeEnter(address replacedNode) external {
-        require(delegationWeights[msg.sender] > 0, "No delegationWeights");
-        if (nodeInfos[msg.sender].id == 0) {
-            _nodeRegister(msg.sender);
-        }
-
-        require(!nodeInfos[msg.sender].active, "Already enter");
-
-        if (activeVrfNodeList.length < ISettings(settings).maxVrfActiveNodes()) {
-            activeVrfNodeList.push(nodeInfos[msg.sender].id);
-            _nodeActivate(msg.sender, uint16(activeVrfNodeList.length)-1);
-            return;
-        }
-
-        require(delegationWeights[msg.sender] > delegationWeights[replacedNode], "Less weights");
-        NodeInfo storage replacedNodeInfo = nodeInfos[replacedNode];
-        activeVrfNodeList[replacedNodeInfo.listIndex] = nodeInfos[msg.sender].id;
-        _nodeActivate(msg.sender, replacedNodeInfo.listIndex);
-        _nodeClear(replacedNode);
+        _nodeEnter(msg.sender, replacedNode);
     }
 
     function nodeExit() external {
-        require(nodeInfos[msg.sender].active, "Already exit");
         _nodeExit(msg.sender);
+    }
+
+    function nodeEnterWithSignature(
+        address replacedNode, uint32 date, address signer, uint8 v, bytes32 r, bytes32 s
+    ) external {
+        bytes32 hashStruct = keccak256(
+            abi.encode(
+                keccak256(
+                    "NodeEnterData(address replacedNode,uint32 date)"
+                ),
+                replacedNode,
+                date
+            )
+        );
+        _checkSignature(hashStruct, signer, v, r, s);
+        require(date == todayIndex(), "Date expired");
+
+        // 1 times per day
+        require(!nodeEnteredWithSigByDate[signer][date], "Already entered with signature");
+        nodeEnteredWithSigByDate[signer][date] = true;
+        _nodeEnter(signer, replacedNode);
+    }
+
+    function nodeExitWithSignature(
+        uint32 date, address signer, uint8 v, bytes32 r, bytes32 s
+    ) external {
+        bytes32 hashStruct = keccak256(
+            abi.encode(
+                keccak256(
+                    "NodeExitData(uint32 date)"
+                ),
+                date
+            )
+        );
+        _checkSignature(hashStruct, signer, v, r, s);
+        require(date == todayIndex(), "Date expired");
+
+        // 1 times per day
+        require(!nodeExitedWithSigByDate[signer][date], "Already exited with signature");
+        nodeExitedWithSigByDate[signer][date] = true;
+        _nodeExit(signer);
     }
 
     function nodeClaim() external {
@@ -208,10 +231,10 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
         emit NodeSlash(node, attestationID, reward);
     }
 
-    function nodeReportDailyActive() external {
-        require(nodeInfos[msg.sender].active, "Inactive node");
-        _updateNodeDailyActive(msg.sender);
-        _confirmNodeRewards(msg.sender);
+    function nodeReportDailyActive(address node) external {
+        require(nodeInfos[node].active, "Inactive node");
+        _updateNodeDailyActive(node);
+        _confirmNodeRewards(node);
     }
 
     function nodeReportVerification(bytes32 attestationID, uint16 index, AttestationResult result) external {
@@ -240,7 +263,17 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
         uint16 invalid;
         uint16 malicious;
         for (uint i = 0; i < infos.length; i++) {
-            _checkSignature(attestationID, infos[i]);
+            bytes32 hashStruct = keccak256(
+                abi.encode(
+                    keccak256(
+                        "VerificationData(bytes32 attestationID,uint8 result,uint16 index)"
+                    ),
+                    attestationID,
+                    infos[i].result,
+                    infos[i].index
+                )
+            );
+            _checkSignature(hashStruct, infos[i].signer, infos[i].v, infos[i].r, infos[i].s);
             _checkNodeInfos(attestation, infos[i].signer, infos[i].index);
 
             if (infos[i].result == AttestationResult.Valid) {
@@ -380,7 +413,29 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
         return chosenNodes;
     }
 
+    function _nodeEnter(address node, address replacedNode) internal {
+        require(delegationWeights[node] > 0, "No delegationWeights");
+        if (nodeInfos[node].id == 0) {
+            _nodeRegister(node);
+        }
+
+        require(!nodeInfos[node].active, "Already enter");
+
+        if (activeVrfNodeList.length < ISettings(settings).maxVrfActiveNodes()) {
+            activeVrfNodeList.push(nodeInfos[node].id);
+            _nodeActivate(node, uint16(activeVrfNodeList.length)-1);
+            return;
+        }
+
+        require(delegationWeights[node] > delegationWeights[replacedNode], "Less weights");
+        NodeInfo storage replacedNodeInfo = nodeInfos[replacedNode];
+        activeVrfNodeList[replacedNodeInfo.listIndex] = nodeInfos[node].id;
+        _nodeActivate(node, replacedNodeInfo.listIndex);
+        _nodeClear(replacedNode);
+    }
+
     function _nodeExit(address node) internal {
+        require(nodeInfos[node].active, "Already exit");
         if (nodeInfos[node].listIndex != activeVrfNodeList.length - 1 ) {
             uint16 tailNodeId = activeVrfNodeList[activeVrfNodeList.length - 1];
             NodeInfo storage tailNodeInfo = nodeInfos[nodeAddrByID[tailNodeId]];
@@ -467,22 +522,11 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
         require(attestation.vrfChosen.length > 0, "Waiting vrf");
     }
 
-    function _checkSignature(bytes32 attestationID, VerificationInfo memory info) internal pure {
-        bytes32 hashStruct = keccak256(
-            abi.encode(
-                keccak256(
-                    "VerificationData(bytes32 attestationID,uint8 result,uint16 index)"
-                ),
-                attestationID,
-                info.result,
-                info.index
-            )
-        );
+    function _checkSignature(bytes32 hashStruct, address signer, uint8 v, bytes32 r, bytes32 s) internal pure {
         bytes32 digest = keccak256(
             abi.encodePacked("\x19\x01", EIP712_DOMAIN_HASH, hashStruct)
         );
-
-        require(info.signer == ecrecover(digest, info.v, info.r, info.s), "signer not match");
+        require(signer == ecrecover(digest, v, r, s), "signer not match");
     }
 
     function _checkNodeInfos(Attestation storage attestation, address node, uint16 index) internal view {
