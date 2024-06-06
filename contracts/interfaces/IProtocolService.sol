@@ -74,20 +74,18 @@ interface IProtocolService {
      * `reporter`: The address of the tee who reported this attestation
      * `valid`: The number of votes that this attestation is considered valid (voted by the verifier node)
      * `invalid`: The number of votes that this attestation is considered invalid (voted by the verifier node)
+     * `vrfChosenID`: ID of the currently randomly selected verification nodes
      * `slashed`: Has this attestation been slashed?
      * `deadline`: Deadline for collecting verification
-     * `vrfChosen`: The currently randomly selected verification nodes
-     * `verifiedNode`: Records whether a node has reported verification
      */
     struct Attestation {
         address reporter;
         uint16 valid;
         uint16 invalid;
         uint16 malicious;
+        uint32 vrfChosenID;
         bool slashed;
         uint256 deadline;
-        uint16[] vrfChosen;
-        mapping(address => bool) verifiedNode;
     }
 
     /**

@@ -28,8 +28,11 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
     address public settings;
     address public carvVrf;
 
-    uint16 nodeIndex;
+    uint16 public nodeIndex;
     uint16[] public activeVrfNodeList;
+
+    uint32 public vrfChosenIndex;
+    mapping(uint32 => uint16[]) public vrfChosenMap;
 
     mapping(uint16 => address) public nodeAddrByID;
     mapping(uint256 => address) public delegation;
@@ -39,6 +42,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
     mapping(address => TeeStakeInfo) public teeStakeInfos;
     mapping(bytes32 => Attestation) public attestations;
     mapping(uint256 => bytes32[]) public request2AttestationIDs;
+    mapping(bytes32 => mapping(address => bool)) public attestationVerifiedNode;
     mapping(address => mapping(bytes32 => bool)) public nodeSlashed;
     mapping(address => mapping(bytes32 => bool)) public nodeClaimedTeeRewards;
     mapping(uint32 => uint32) public globalDailyActiveNodes;
@@ -114,9 +118,8 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
     }
 
     function claimMaliciousTeeRewards(bytes32 attestationID) external {
-        Attestation storage attestation = attestations[attestationID];
-        require(attestation.slashed, "Not slashed");
-        require(attestation.verifiedNode[msg.sender], "Not verified");
+        require(attestations[attestationID].slashed, "Not slashed");
+        require(attestationVerifiedNode[attestationID][msg.sender], "Not verified");
         require(!nodeClaimedTeeRewards[msg.sender][attestationID], "Already claimed");
 
         uint256 reward = ISettings(settings).teeSlashAmount();
@@ -214,8 +217,8 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
 
         NodeInfo storage nodeInfo = nodeInfos[node];
         require(!nodeSlashed[node][attestationID], "Already slashed");
-        require(attestation.vrfChosen[index] == nodeInfo.id, "Not chosen");
-        require(!attestation.verifiedNode[node], "Node verified");
+        require(vrfChosenMap[attestation.vrfChosenID][index] == nodeInfo.id, "Not chosen");
+        require(!attestationVerifiedNode[attestationID][node], "Node verified");
 
         uint256 reward = ISettings(settings).nodeSlashReward();
         nodeInfo.missedVerifyCount += 1;
@@ -240,7 +243,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
     function nodeReportVerification(bytes32 attestationID, uint16 index, AttestationResult result) external {
         Attestation storage attestation = attestations[attestationID];
         _checkAttestation(attestation);
-        _checkNodeInfos(attestation, msg.sender, index);
+        _checkNodeInfos(attestationID, msg.sender, index);
 
         if (result == AttestationResult.Valid) {
             attestation.valid += 1;
@@ -251,7 +254,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
         } else {
             revert("Unknown AttestationResult");
         }
-        attestation.verifiedNode[msg.sender] = true;
+        attestationVerifiedNode[attestationID][msg.sender] = true;
         emit NodeReportVerification(msg.sender, attestationID, result);
     }
 
@@ -274,7 +277,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
                 )
             );
             _checkSignature(hashStruct, infos[i].signer, infos[i].v, infos[i].r, infos[i].s);
-            _checkNodeInfos(attestation, infos[i].signer, infos[i].index);
+            _checkNodeInfos(attestationID, infos[i].signer, infos[i].index);
 
             if (infos[i].result == AttestationResult.Valid) {
                 valid++;
@@ -285,7 +288,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
             } else {
                 revert("Unknown AttestationResult");
             }
-            attestation.verifiedNode[infos[i].signer] = true;
+            attestationVerifiedNode[attestationID][infos[i].signer] = true;
         }
 
         attestation.valid += valid;
@@ -368,10 +371,6 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
         return (block.timestamp - IVault(vault).startTimestamp()) % (1 days);
     }
 
-    function attestationVrfChosen(bytes32 attestationID) external view returns (uint16[] memory) {
-        return attestations[attestationID].vrfChosen;
-    }
-
     /*----------------------------------------- internal functions --------------------------------------------*/
 
     // chainlink VRF callback function
@@ -381,11 +380,14 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
 
         uint256 deadline = block.timestamp + ISettings(settings).nodeVerifyDuration();
         uint16[] memory vrfChosen = _vrfChooseNodes(randomWords[0]);
+        vrfChosenIndex++;
+        vrfChosenMap[vrfChosenIndex] = vrfChosen;
+
         bytes32[] memory attestationIDs = request2AttestationIDs[requestId];
         for (uint index = 0; index < attestationIDs.length; index++) {
             Attestation storage attestation = attestations[attestationIDs[index]];
             attestation.deadline = deadline;
-            attestation.vrfChosen = vrfChosen;
+            attestation.vrfChosenID = vrfChosenIndex;
         }
 
         emit ConfirmVrfNodes(requestId, vrfChosen, deadline);
@@ -516,10 +518,10 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
         nodeInfo.lastConfirmDate = today-1;
     }
 
-    function _checkAttestation(Attestation storage attestation) internal view {
+    function _checkAttestation(Attestation memory attestation) internal view {
         require(attestation.reporter != address(0), "Attestation not exist");
         require(attestation.deadline > block.timestamp, "Deadline passed");
-        require(attestation.vrfChosen.length > 0, "Waiting vrf");
+        require(attestation.vrfChosenID > 0, "Waiting vrf");
     }
 
     function _checkSignature(bytes32 hashStruct, address signer, uint8 v, bytes32 r, bytes32 s) internal pure {
@@ -529,11 +531,12 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable {
         require(signer == ecrecover(digest, v, r, s), "signer not match");
     }
 
-    function _checkNodeInfos(Attestation storage attestation, address node, uint16 index) internal view {
+    function _checkNodeInfos(bytes32 attestationID, address node, uint16 index) internal view {
+        Attestation memory attestation = attestations[attestationID];
         require(nodeInfos[node].active, "Not active");
         require(delegationWeights[node] > 0, "No weights");
-        require(!attestation.verifiedNode[node], "Already verify");
-        require(attestation.vrfChosen[index] == nodeInfos[node].id, "Not chosen");
+        require(!attestationVerifiedNode[attestationID][node], "Already verify");
+        require(vrfChosenMap[attestation.vrfChosenID][index] == nodeInfos[node].id, "Not chosen");
     }
 
     /*----------------------------------------- modifiers --------------------------------------------*/
