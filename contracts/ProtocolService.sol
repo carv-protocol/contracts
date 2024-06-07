@@ -14,14 +14,8 @@ import "./Adminable.sol";
 contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multicall {
 
     uint32 public constant MAX_UINT32 = 4294967295; // type(uint32).max;
-    bytes32 public constant EIP712_DOMAIN_HASH = keccak256(
-        abi.encode(
-            keccak256("EIP712Domain(string name,string version,uint256 chainId)"),
-            keccak256(bytes("ProtocolService")),
-            keccak256(bytes("0.1.0")),
-            42161
-        )
-    );
+
+    bytes32 public eip712DomainHash;
 
     address public vault;
     address public carvToken;
@@ -50,12 +44,20 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     mapping(address => mapping(uint32 => uint32)) public nodeDailyActive;
 
     function initialize(
-        address carvToken_, address carvNft_, address vault_
+        address carvToken_, address carvNft_, address vault_, uint256 chainID
     ) public initializer {
         carvToken = carvToken_;
         carvNft = carvNft_;
         vault= vault_;
         __Adminable_init(msg.sender);
+        eip712DomainHash = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId)"),
+                keccak256(bytes("ProtocolService")),
+                keccak256(bytes("1.0.0")),
+                chainID
+            )
+        );
     }
 
     function updateSettingsAddress(address settings_) external onlyAdmin {
@@ -568,7 +570,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     ) internal view {
         require(expiredAt >= block.timestamp, "Expired");
         bytes32 digest = keccak256(
-            abi.encodePacked("\x19\x01", EIP712_DOMAIN_HASH, hashStruct)
+            abi.encodePacked("\x19\x01", eip712DomainHash, hashStruct)
         );
         require(signer == ecrecover(digest, v, r, s), "signer not match");
     }

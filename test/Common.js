@@ -11,7 +11,7 @@ exports.E18 = function(x) {
 exports.sign = async function(signer, attestationID, result, index) {
     const domain = {
         name: "ProtocolService",
-        version: "0.1.0",
+        version: "1.0.0",
         chainId: 42161,
     };
     const types = {
@@ -85,7 +85,7 @@ exports.deployAll = async function () {
     proxyAdmin = await ProxyAdmin.deploy(signers[0].address);
     proxy = await Proxy.deploy(service.address, proxyAdmin.address, ethers.utils.toUtf8Bytes(""))
     proxy = ProtocolService.attach(proxy.address)
-    await proxy.initialize(carv.address, nft.address, vault.address)
+    await proxy.initialize(carv.address, nft.address, vault.address, 42161)
 
     await vault.initialize(signers[0].address, nft.address, proxy.address)
     await setting.updateSettings({
