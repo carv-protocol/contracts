@@ -18,7 +18,7 @@ exports.sign = async function(signer, attestationID, result, index) {
         VerificationData: [
             {name: 'attestationID', type: 'bytes32'},
             {name: 'result', type: 'uint8'},
-            {name: 'index', type: 'uint16'}
+            {name: 'index', type: 'uint32'}
         ]
     };
     const value = {

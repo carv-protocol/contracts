@@ -20,7 +20,7 @@ interface IProtocolService {
      * @notice This struct represents information of a node
      *
      * `id`: The globally unique ID of the node. The node is automatically registered when
-     *        it calls `nodeEnter` for the first time. Up to 65535 nodes can be registered.
+     *        it calls `nodeEnter` for the first time. Up to 4294967295 nodes can be registered.
      * `listIndex`: The position of the node in the current `activeVrfNodeList`
      * `active`: Is the node active?
      * `lastConfirmDate`: The date on which reward was last confirmed.
@@ -33,8 +33,8 @@ interface IProtocolService {
      * `commissionRateLastModifyAt`: timestamp of last modifying commission rate
      */
     struct NodeInfo {
-        uint16 id;
-        uint16 listIndex;
+        uint32 id;
+        uint32 listIndex;
         bool active;
         uint32 lastConfirmDate;
         uint64 missedVerifyCount;
@@ -105,7 +105,7 @@ interface IProtocolService {
      */
     struct VerificationInfo {
         AttestationResult result;
-        uint16 index;
+        uint32 index;
         address signer;
         uint8 v;
         bytes32 r;
@@ -122,10 +122,10 @@ interface IProtocolService {
     event TeeSlash(address tee, bytes32 attestationID, uint256 amount);
     event ClaimMaliciousTeeRewards(address verifer, uint256 amount);
     event TeeReportAttestations(address tee, bytes32[] attestationIDs, string[] attestationInfos, uint256 requestID);
-    event ConfirmVrfNodes(uint256 requestId, uint16[] vrfChosen, uint256 deadline);
+    event ConfirmVrfNodes(uint256 requestId, uint32[] vrfChosen, uint256 deadline);
 
     // node
-    event NodeRegister(address node, uint16 id);
+    event NodeRegister(address node, uint32 id);
     event NodeActivate(address node);
     event NodeClear(address node);
     event NodeSlash(address node, bytes32 attestationID, uint256 rewards);
@@ -347,7 +347,7 @@ interface IProtocolService {
      * @param attestationID: id of attestation that node miss reporting
      * @param index: index of this node in vrfChosen list of this attestation
      */
-    function nodeSlash(address node, bytes32 attestationID, uint16 index) external;
+    function nodeSlash(address node, bytes32 attestationID, uint32 index) external;
 
     /**
      * @notice If the node is online but hasn't reported verification that day,
@@ -370,7 +370,7 @@ interface IProtocolService {
      * @param index: index of this node in vrfChosen list of this attestation
      * @param result: Whether the attestation is valid after being checked by the node.
      */
-    function nodeReportVerification(bytes32 attestationID, uint16 index, AttestationResult result) external;
+    function nodeReportVerification(bytes32 attestationID, uint32 index, AttestationResult result) external;
 
     /**
      * @notice Batch reporting verification.

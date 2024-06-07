@@ -13,7 +13,7 @@ import "./Adminable.sol";
 
 contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multicall {
 
-    uint16 public constant MAX_UINT16 = 65535; // type(uint16).max;
+    uint32 public constant MAX_UINT32 = 4294967295; // type(uint32).max;
     bytes32 public constant EIP712_DOMAIN_HASH = keccak256(
         abi.encode(
             keccak256("EIP712Domain(string name,string version,uint256 chainId)"),
@@ -29,13 +29,13 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     address public settings;
     address public carvVrf;
 
-    uint16 public nodeIndex;
-    uint16[] public activeVrfNodeList;
+    uint32 public nodeIndex;
+    uint32[] public activeVrfNodeList;
 
     uint32 public vrfChosenIndex;
-    mapping(uint32 => uint16[]) public vrfChosenMap;
+    mapping(uint32 => uint32[]) public vrfChosenMap;
 
-    mapping(uint16 => address) public nodeAddrByID;
+    mapping(uint32 => address) public nodeAddrByID;
     mapping(uint256 => address) public delegation;
     mapping(address => uint16) public delegationWeights;
     mapping(address => NodeInfo) public nodeInfos;
@@ -238,7 +238,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         emit NodeClaim(node, msg.sender, rewards);
     }
 
-    function nodeSlash(address node, bytes32 attestationID, uint16 index) external {
+    function nodeSlash(address node, bytes32 attestationID, uint32 index) external {
         Attestation storage attestation = attestations[attestationID];
         require(attestation.deadline > block.timestamp, "Deadline");
 
@@ -267,7 +267,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         _confirmNodeRewards(node);
     }
 
-    function nodeReportVerification(bytes32 attestationID, uint16 index, AttestationResult result) external {
+    function nodeReportVerification(bytes32 attestationID, uint32 index, AttestationResult result) external {
         Attestation storage attestation = attestations[attestationID];
         _checkAttestation(attestation);
         _checkNodeInfos(attestationID, msg.sender, index);
@@ -296,7 +296,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
             bytes32 hashStruct = keccak256(
                 abi.encode(
                     keccak256(
-                        "VerificationData(bytes32 attestationID,uint8 result,uint16 index)"
+                        "VerificationData(bytes32 attestationID,uint8 result,uint32 index)"
                     ),
                     attestationID,
                     infos[i].result,
@@ -406,7 +406,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         require(randomWords.length > 0, "Wrong randomWords");
 
         uint256 deadline = block.timestamp + ISettings(settings).nodeVerifyDuration();
-        uint16[] memory vrfChosen = _vrfChooseNodes(randomWords[0]);
+        uint32[] memory vrfChosen = _vrfChooseNodes(randomWords[0]);
         vrfChosenIndex++;
         vrfChosenMap[vrfChosenIndex] = vrfChosen;
 
@@ -423,21 +423,21 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     // if number of active nodes is less than 10, choose all active nodes
     // if number of active nodes is more than 10 and less than 100, choose 10 active nodes randomly
     // if number of active node is more than 100, choose 1/10 of active nodes randomly
-    function _vrfChooseNodes(uint256 randomWord) internal view returns (uint16[] memory) {
+    function _vrfChooseNodes(uint256 randomWord) internal view returns (uint32[] memory) {
         if (activeVrfNodeList.length <= 10) {
             return activeVrfNodeList;
         }
 
-        uint16 curIndex = uint16(randomWord % activeVrfNodeList.length);
-        uint16 length = 10;
+        uint32 curIndex = uint32(randomWord % activeVrfNodeList.length);
+        uint32 length = 10;
         if (activeVrfNodeList.length > 100) {
-            length = uint16(activeVrfNodeList.length/10);
+            length = uint32(activeVrfNodeList.length/10);
         }
 
-        uint16[] memory chosenNodes = new uint16[](length);
-        for (uint16 i=0; i<length; i++) {
+        uint32[] memory chosenNodes = new uint32[](length);
+        for (uint32 i=0; i<length; i++) {
             chosenNodes[i] = activeVrfNodeList[curIndex];
-            curIndex = (curIndex+1) % uint16(activeVrfNodeList.length);
+            curIndex = (curIndex+1) % uint32(activeVrfNodeList.length);
         }
         return chosenNodes;
     }
@@ -452,7 +452,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
 
         if (activeVrfNodeList.length < ISettings(settings).maxVrfActiveNodes()) {
             activeVrfNodeList.push(nodeInfos[node].id);
-            _nodeActivate(node, uint16(activeVrfNodeList.length)-1);
+            _nodeActivate(node, uint32(activeVrfNodeList.length)-1);
             return;
         }
 
@@ -466,7 +466,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     function _nodeExit(address node) internal {
         require(nodeInfos[node].active, "Already exit");
         if (nodeInfos[node].listIndex != activeVrfNodeList.length - 1 ) {
-            uint16 tailNodeId = activeVrfNodeList[activeVrfNodeList.length - 1];
+            uint32 tailNodeId = activeVrfNodeList[activeVrfNodeList.length - 1];
             NodeInfo storage tailNodeInfo = nodeInfos[nodeAddrByID[tailNodeId]];
             activeVrfNodeList[nodeInfos[node].listIndex] = tailNodeInfo.id;
             tailNodeInfo.listIndex = nodeInfos[node].listIndex;
@@ -487,7 +487,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         emit NodeModifyCommissionRate(node, commissionRate);
     }
 
-    function _nodeActivate(address node, uint16 listIndex) internal {
+    function _nodeActivate(address node, uint32 listIndex) internal {
         NodeInfo storage info = nodeInfos[node];
         info.listIndex = listIndex;
         info.active = true;
@@ -498,7 +498,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
 
     function _nodeClear(address node) internal {
         NodeInfo storage info = nodeInfos[node];
-        info.listIndex = MAX_UINT16;
+        info.listIndex = MAX_UINT32;
         info.active = false;
         info.missedVerifyCount = 0;
 
@@ -509,11 +509,11 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
 
     function _nodeRegister(address node) internal {
         // first enter, assign id
-        require(nodeIndex < MAX_UINT16, "Index overflow");
+        require(nodeIndex < MAX_UINT32, "Index overflow");
         nodeIndex++;
         NodeInfo storage nodeInfo = nodeInfos[node];
         nodeInfo.id = nodeIndex;
-        nodeInfo.listIndex = MAX_UINT16;
+        nodeInfo.listIndex = MAX_UINT32;
         nodeInfo.lastConfirmDate = todayIndex()-1;
         nodeAddrByID[nodeIndex] = node;
 
@@ -573,7 +573,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         require(signer == ecrecover(digest, v, r, s), "signer not match");
     }
 
-    function _checkNodeInfos(bytes32 attestationID, address node, uint16 index) internal view {
+    function _checkNodeInfos(bytes32 attestationID, address node, uint32 index) internal view {
         Attestation memory attestation = attestations[attestationID];
         require(nodeInfos[node].active, "Not active");
         require(delegationWeights[node] > 0, "No weights");
