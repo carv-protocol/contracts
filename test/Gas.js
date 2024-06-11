@@ -1,7 +1,7 @@
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { E, E18, deployAll, sign} = require("./Common")
+const { E, E18, deployAll, signVerification} = require("./Common")
 
 describe("Gas", function () {
     async function runNode(signer) {
@@ -99,13 +99,13 @@ describe("Gas", function () {
 
         let attestationID = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(attestation))
 
-        let signature0 = await sign(signers[10], attestationID, 0, 1)
-        let signature1 = await sign(signers[11], attestationID, 0, 2)
-        let signature2 = await sign(signers[12], attestationID, 0, 3)
-        let signature3 = await sign(signers[13], attestationID, 0, 4)
-        let signature4 = await sign(signers[14], attestationID, 0, 5)
+        let signature0 = await signVerification(signers[10], 42161, attestationID, 0, 1)
+        let signature1 = await signVerification(signers[11], 42161, attestationID, 0, 2)
+        let signature2 = await signVerification(signers[12], 42161, attestationID, 0, 3)
+        let signature3 = await signVerification(signers[13], 42161, attestationID, 0, 4)
+        let signature4 = await signVerification(signers[14], 42161, attestationID, 0, 5)
 
-        let signature = await sign(signers[15], attestationID, 0, 6)
+        let signature = await signVerification(signers[15], 42161, attestationID, 0, 6)
 
         await proxy.nodeReportVerificationBatch(
             attestationID,

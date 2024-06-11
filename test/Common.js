@@ -8,12 +8,65 @@ exports.E18 = function(x) {
     return e18(x)
 }
 
-exports.sign = async function(signer, attestationID, result, index) {
-    const domain = {
-        name: "ProtocolService",
-        version: "1.0.0",
-        chainId: 42161,
+exports.signModifyCommission = async function(signer, chainID, commissionRate, expiredAt) {
+    const types = {
+        NodeModifyCommissionRateData: [
+            {name: 'commissionRate', type: 'uint32'},
+            {name: 'expiredAt', type: 'uint256'}
+        ]
     };
+    const value = {
+        commissionRate: commissionRate,
+        expiredAt: expiredAt
+    };
+
+    return sign(signer, chainID, types, value)
+}
+
+exports.signNodeEnter = async function(signer, chainID, replacedNode, expiredAt) {
+    const types = {
+        NodeEnterData: [
+            {name: 'replacedNode', type: 'address'},
+            {name: 'expiredAt', type: 'uint256'}
+        ]
+    };
+    const value = {
+        replacedNode: replacedNode,
+        expiredAt: expiredAt
+    };
+
+    return sign(signer, chainID, types, value)
+}
+
+exports.signNodeExit = async function(signer, chainID, expiredAt) {
+    const types = {
+        NodeExitData: [
+            {name: 'expiredAt', type: 'uint256'}
+        ]
+    };
+    const value = {
+        expiredAt: expiredAt
+    };
+
+    return sign(signer, chainID, types, value)
+}
+
+exports.signSetRewardClaimer = async function(signer, chainID, claimer, expiredAt) {
+    const types = {
+        NodeSetRewardClaimerData: [
+            {name: 'claimer', type: 'address'},
+            {name: 'expiredAt', type: 'uint256'}
+        ]
+    };
+    const value = {
+        claimer: claimer,
+        expiredAt: expiredAt
+    };
+
+    return sign(signer, chainID, types, value)
+}
+
+exports.signVerification = async function(signer, chainID, attestationID, result, index) {
     const types = {
         VerificationData: [
             {name: 'attestationID', type: 'bytes32'},
@@ -26,12 +79,7 @@ exports.sign = async function(signer, attestationID, result, index) {
         result: result,
         index: index
     };
-    const signature = await signer._signTypedData(
-        domain,
-        types,
-        value
-    );
-    return ethers.utils.splitSignature(signature)
+    return sign(signer, chainID, types, value)
 }
 
 exports.deployToken = async function() {
@@ -116,6 +164,20 @@ exports.deployAll = async function () {
     await proxy.updateVrfAddress(vrf.address)
 
     return [carv, veCarv, nft, vault, setting, vrf, proxy, proxyAdmin, service, coordinator, signers]
+}
+
+async function sign(signer, chainID, types, value) {
+    const domain = {
+        name: "ProtocolService",
+        version: "1.0.0",
+        chainId: chainID,
+    };
+    const signature = await signer._signTypedData(
+        domain,
+        types,
+        value
+    );
+    return ethers.utils.splitSignature(signature)
 }
 
 function contractAddr(deployer, nonce) {

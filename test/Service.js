@@ -1,7 +1,7 @@
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { E, E18, deployAll} = require("./Common")
+const { E, E18, deployAll, signNodeEnter, signNodeExit, signModifyCommission, signSetRewardClaimer} = require("./Common")
 
 describe("Service", function () {
     let carv, veCarv, nft, vault, setting, vrf, proxy, proxyAdmin, service, coordinator, signers
@@ -46,6 +46,41 @@ describe("Service", function () {
         await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
 
         await expect(proxy.connect(alice).nodeExit()).not.to.be.reverted
+
+    });
+
+    it("Node-EIP712", async function () {
+        let alice = signers[1]
+        await nft.connect(alice).mint();
+        await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
+
+        let currentTimestamp = await time.latest()
+
+        let signature = await signNodeEnter(alice, 42161, alice.address, currentTimestamp)
+        await expect(proxy.nodeEnterWithSignature(
+            alice.address, currentTimestamp, alice.address, signature.v, signature.r, signature.s
+        )).to.be.reverted
+
+        currentTimestamp += 600
+        signature = await signNodeEnter(alice, 42161, alice.address, currentTimestamp)
+        await expect(proxy.nodeEnterWithSignature(
+            alice.address, currentTimestamp, alice.address, signature.v, signature.r, signature.s
+        )).not.to.be.reverted
+
+        signature = await signNodeExit(alice, 42161, currentTimestamp)
+        await expect(proxy.nodeExitWithSignature(
+            currentTimestamp, alice.address, signature.v, signature.r, signature.s
+        )).not.to.be.reverted
+
+        signature = await signModifyCommission(alice, 42161, 100, currentTimestamp)
+        await expect(proxy.nodeModifyCommissionRateWithSignature(
+            100, currentTimestamp, alice.address, signature.v, signature.r, signature.s
+        )).not.to.be.reverted
+
+        signature = await signSetRewardClaimer(alice, 42161, alice.address, currentTimestamp)
+        await expect(proxy.nodeSetRewardClaimerWithSignature(
+            alice.address, currentTimestamp, alice.address, signature.v, signature.r, signature.s
+        )).not.to.be.reverted
 
     });
 
