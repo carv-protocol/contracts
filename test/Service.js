@@ -4,10 +4,10 @@ const { ethers } = require("hardhat");
 const { E, E18, deployAll, signNodeEnter, signNodeExit, signModifyCommission, signSetRewardClaimer} = require("./Common")
 
 describe("Service", function () {
-    let carv, veCarv, nft, vault, setting, vrf, proxy, proxyAdmin, service, coordinator, signers
+    let carv, veCarv, nft, vault, setting, vrf, proxy, service, coordinator, signers
 
     beforeEach(async function () {
-        [carv, veCarv, nft, vault, setting, vrf, proxy, proxyAdmin, service, coordinator, signers] = await deployAll()
+        [carv, veCarv, nft, vault, setting, vrf, proxy, service, coordinator, signers] = await deployAll()
     })
 
     it("Tee", async function () {

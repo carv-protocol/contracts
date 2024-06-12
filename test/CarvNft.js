@@ -3,10 +3,10 @@ const { expect } = require("chai");
 const { E, E18, deployAll} = require("./Common")
 
 describe("CarvNft", function () {
-    let carv, veCarv, nft, vault, setting, vrf, proxy, proxyAdmin, service, coordinator, signers
+    let carv, veCarv, nft, vault, setting, vrf, proxy, service, coordinator, signers
 
     beforeEach(async function () {
-        [carv, veCarv, nft, vault, setting, vrf, proxy, proxyAdmin, service, coordinator, signers] = await deployAll()
+        [carv, veCarv, nft, vault, setting, vrf, proxy, service, coordinator, signers] = await deployAll()
     })
 
     it("mint/redeem", async function () {

@@ -10,10 +10,10 @@ describe("Gas", function () {
         await proxy.connect(signer).nodeEnter(signer.address)
     }
 
-    let carv, veCarv, nft, vault, setting, vrf, proxy, proxyAdmin, service, coordinator, signers
+    let carv, veCarv, nft, vault, setting, vrf, proxy, service, coordinator, signers
 
     beforeEach(async function () {
-        [carv, veCarv, nft, vault, setting, vrf, proxy, proxyAdmin, service, coordinator, signers] = await deployAll()
+        [carv, veCarv, nft, vault, setting, vrf, proxy, service, coordinator, signers] = await deployAll()
     })
 
     it("Tee", async function () {

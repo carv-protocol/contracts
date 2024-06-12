@@ -3,11 +3,14 @@
   "dependencies": {
     "@chainlink/contracts": "1.1.0",
     "@openzeppelin/contracts": ">=4.8.3",
-    "@openzeppelin/contracts-upgradeable": "4.9.3"
+    "@openzeppelin/contracts-upgradeable": "4.9.3",
+    "@openzeppelin/hardhat-upgrades": "^1.17.0",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@ethersproject/abi": "^5.0.12",
     "@ethersproject/solidity": "^5.0.9",
+    "@openzeppelin/hardhat-upgrades": "^1.17.0",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "chai": "^4.3.6",
     "ethereum-waffle": "^3.4.4",

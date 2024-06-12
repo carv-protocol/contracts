@@ -1,5 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
+require('@openzeppelin/hardhat-upgrades');
 require("hardhat-gas-reporter");
+require("dotenv").config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -15,4 +17,12 @@ module.exports = {
       enabled: true,
     },
   },
+
+  networks: {
+    opbnb: {
+      url: process.env.API_KEY_URL_OPBNB,
+      accounts: [process.env.PRIVATE_KEY],
+      gasPrice: 1000000,
+    },
+  }
 };
