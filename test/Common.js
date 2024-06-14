@@ -101,6 +101,13 @@ exports.deploySettings = async function deploySettings() {
     return { settings, owner };
 }
 
+exports.deployNft = async function () {
+    const [owner, alice, bob, cindy] = await ethers.getSigners();
+    const CarvNft = await ethers.getContractFactory("CarvNft");
+    let nft = await CarvNft.deploy("CarvNft", "CarvNft");
+    return [owner, alice, bob, cindy, nft]
+}
+
 exports.deployAll = async function () {
     let carv, veCarv, nft, vault, setting, vrf, proxy, service, coordinator
 
@@ -128,7 +135,7 @@ exports.deployAll = async function () {
     vrf = await CarvVrf.deploy(coordinator.address);
     service = await ProtocolService.deploy();
     proxy = await Proxy.deploy(service.address, signers[0].address, ethers.utils.toUtf8Bytes(""))
-    nft = await CarvNft.deploy(carv.address, vault.address, proxy.address);
+    nft = await CarvNft.deploy("CarvNft", "CarvNft");
     proxy = ProtocolService.attach(proxy.address)
     await proxy.initialize(carv.address, nft.address, vault.address, 42161)
 

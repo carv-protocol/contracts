@@ -5,7 +5,7 @@ const { E, E18, deployAll, signVerification} = require("./Common")
 
 describe("Gas", function () {
     async function runNode(signer) {
-        await nft.connect(signer).mint();
+        await nft.mint(signer.address, 1);
         await proxy.connect(signer).delegate(await nft.tokenIndex(), signer.address)
         await proxy.connect(signer).nodeEnter(signer.address)
     }
@@ -67,7 +67,7 @@ describe("Gas", function () {
         let owner = signers[0]
         let alice = signers[1]
 
-        await nft.connect(alice).mint();
+        await nft.mint(alice.address, 1);
         await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
         await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
 
