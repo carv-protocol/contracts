@@ -14,6 +14,7 @@ contract CarvNft is ICarvNft, ERC721, Ownable {
     uint256 public transferProhibitedUntil;
     address public redeemAddress;
 
+    mapping(uint256 => MetaData) public tokenMetas;
     mapping(uint256 => bool) public transferred;
     mapping(address => bool) public canTransferOnce;
 
@@ -42,18 +43,19 @@ contract CarvNft is ICarvNft, ERC721, Ownable {
         super.transferFrom(from, to, tokenId);
     }
 
-    function mint(address receiver, uint256 count) public onlyOwner {
+    function mint(address receiver, uint256 count, MetaData calldata meta) public onlyOwner {
         require(tokenIndex+count <= MAX_SUPPLY, "Mint finished");
         for (uint i = 1; i <= count; i++) {
             _safeMint(receiver, tokenIndex+i);
+            tokenMetas[tokenIndex+i] = meta;
         }
         tokenIndex += count;
     }
 
-    function mintBatch(address[] calldata receivers, uint256[] calldata counts) external onlyOwner {
-        require(receivers.length == counts.length, "Length of arr not equal");
+    function mintBatch(address[] calldata receivers, uint256[] calldata counts, MetaData[] calldata metas) external onlyOwner {
+        require(receivers.length == counts.length && counts.length == metas.length, "Length of arr not equal");
         for (uint i = 0; i < receivers.length; i++) {
-            mint(receivers[i], counts[i]);
+            mint(receivers[i], counts[i], metas[i]);
         }
     }
 

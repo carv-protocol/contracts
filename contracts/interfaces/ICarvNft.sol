@@ -3,6 +3,19 @@ pragma solidity ^0.8.20;
 
 interface ICarvNft {
     /**
+     * @notice This struct represents meta information bound to TokenID,
+     *
+     * `code`: code of this token entered by buyer
+     * `price`: price of this token paid by buyer
+     * `tier`: tier of this token
+     */
+    struct MetaData {
+        string code;
+        uint64 price;
+        uint8 tier;
+    }
+
+    /**
      * @notice mint {count} nft to {receiver}.
      * @notice totalSupply 100,000
      *
@@ -10,8 +23,9 @@ interface ICarvNft {
      *
      * @param receiver: nft receiver
      * @param count: how many nft to be minted to receiver
+     * @param meta: `MetaData` of this tokenID
      */
-    function mint(address receiver, uint256 count) external;
+    function mint(address receiver, uint256 count, MetaData calldata meta) external;
 
     /**
      * @notice mint {counts} nft to {receivers}.
@@ -21,8 +35,9 @@ interface ICarvNft {
      *
      * @param receivers: array of receivers
      * @param counts: array of counts
+     * @param metas: array of meta
      */
-    function mintBatch(address[] calldata receivers, uint256[] calldata counts) external;
+    function mintBatch(address[] calldata receivers, uint256[] calldata counts, MetaData[] calldata metas) external;
 
     /**
      * @notice Set tokenURI of all the tokens
