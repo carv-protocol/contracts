@@ -24,5 +24,10 @@ module.exports = {
       accounts: [process.env.PRIVATE_KEY],
       gasPrice: 1000000,
     },
+    arb: {
+      url: process.env.API_KEY_URL_ARB,
+      accounts: [process.env.PRIVATE_KEY],
+      gasPrice: 100000000,
+    },
   }
 };

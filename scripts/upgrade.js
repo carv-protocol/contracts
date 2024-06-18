@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 
-const chainID = 42161;
-const coordinatorAddress = "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43";
+const chainID = 421614;
+const coordinatorAddress = "0x50d47e4142598e3411aa864e08a44284e471ac6f";
 const aggregatorAddress = "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43";
 const overrides = {
     gasLimit: 6000000,
@@ -63,12 +63,11 @@ async function main() {
     })
     await tx.wait()
     tx = await vrf.updateVrfConfig({
-        keyHash: "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae",
-        subId: 100,
-        requestConfirmations: 3,
-        callbackGasLimit: 10000,
-        numWords: 1,
-        nativePayment: true
+        keyHash: "0x027f94ff1465b3525f9fc03e9ff7d6d2c0953482246dd6ae07570c45d6631414",
+        subId: 339,
+        requestConfirmations: 1,
+        callbackGasLimit: 1000000,
+        numWords: 1
     })
     await tx.wait()
     tx = await vrf.grantCaller(proxy.address)
@@ -78,7 +77,7 @@ async function main() {
     await proxy.updateVrfAddress(vrf.address)
 
     // print contract address
-    let adminAddr = await hre.upgrades.erc1967.getAdminAddress("0xa85debb2292161e8767272f9C0d44522A84FCB58")
+    let adminAddr = await hre.upgrades.erc1967.getAdminAddress(proxy.address)
     console.log(
         "carv: ", carv.address, "\n",
         "veCarv: ", veCarv.address, "\n",
