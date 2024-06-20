@@ -40,14 +40,13 @@ interface ICarvNft {
     function mintBatch(address[] calldata receivers, uint256[] calldata counts, MetaData[] calldata metas) external;
 
     /**
-     * @notice Set tokenURI of all the tokens
-     * @notice The URI of each tokenID is the same
+     * @notice Set BaseURI of all the tokens
      *
      * @dev Auth: Only Owner.
      *
-     * @param newTokenURI: newTokenURI
+     * @param newBaseURI: newBaseURI
      */
-    function setTokenURI(string memory newTokenURI) external;
+    function setBaseURI(string memory newBaseURI) external;
 
     /**
      * @notice Set TransferProhibitedUntil

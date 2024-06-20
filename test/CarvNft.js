@@ -110,12 +110,12 @@ describe("CarvNft", function () {
             tier: 5
         }
 
-        let TOKEN_URI = "test"
-        await expect(nft.setTokenURI(TOKEN_URI)).not.to.be.reverted
+        let BASE_URI = "test"
+        await expect(nft.setBaseURI(BASE_URI)).not.to.be.reverted
         await expect(nft.mint(alice.address, 3, meta)).not.to.be.reverted
-        expect(await nft.tokenURI(1)).to.equal(TOKEN_URI);
-        expect(await nft.tokenURI(2)).to.equal(TOKEN_URI);
-        expect(await nft.tokenURI(3)).to.equal(TOKEN_URI);
+        expect(await nft.tokenURI(1)).to.equal(BASE_URI+"1");
+        expect(await nft.tokenURI(2)).to.equal(BASE_URI+"2");
+        expect(await nft.tokenURI(3)).to.equal(BASE_URI+"3");
 
         expect((await nft.tokenMetas(1))[0]).to.equal("gg");
         expect((await nft.tokenMetas(1))[1]).to.equal(123456);

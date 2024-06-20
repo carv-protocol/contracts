@@ -9,7 +9,7 @@ contract CarvNft is ICarvNft, ERC721, Ownable {
 
     uint256 constant MAX_SUPPLY = 100000;
 
-    string private _tokenURI;
+    string private baseURI;
     uint256 public tokenIndex;
     uint256 public transferProhibitedUntil;
     address public redeemAddress;
@@ -24,8 +24,8 @@ contract CarvNft is ICarvNft, ERC721, Ownable {
         return interfaceId == type(ICarvNft).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        return _tokenURI;
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
     }
 
     function transferFrom(address from, address to, uint256 tokenId) public override {
@@ -59,8 +59,8 @@ contract CarvNft is ICarvNft, ERC721, Ownable {
         }
     }
 
-    function setTokenURI(string memory newTokenURI) external onlyOwner {
-        _tokenURI = newTokenURI;
+    function setBaseURI(string memory newBaseURI) external onlyOwner {
+        baseURI = newBaseURI;
     }
 
     function setTransferProhibitedUntil(uint256 newTransferProhibitedUntil) external onlyOwner {
