@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "./interfaces/ICarvNft.sol";
 
-contract CarvNft is ICarvNft, ERC721, Ownable {
+contract CarvNft is Ownable, ERC721, ICarvNft {
 
     uint256 constant MAX_SUPPLY = 100000;
 
@@ -61,7 +61,7 @@ contract CarvNft is ICarvNft, ERC721, Ownable {
         }
     }
 
-    function setBaseURI(string memory newBaseURI) external onlyOwner {
+    function setBaseURI(string calldata newBaseURI) external onlyOwner {
         baseURI = newBaseURI;
     }
 

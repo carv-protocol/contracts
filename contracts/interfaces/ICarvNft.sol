@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 interface ICarvNft {
     /**
@@ -46,7 +46,7 @@ interface ICarvNft {
      *
      * @param newBaseURI: newBaseURI
      */
-    function setBaseURI(string memory newBaseURI) external;
+    function setBaseURI(string calldata newBaseURI) external;
 
     /**
      * @notice Set TransferProhibitedUntil
