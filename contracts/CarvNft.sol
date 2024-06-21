@@ -12,6 +12,7 @@ contract CarvNft is ICarvNft, ERC721, Ownable {
     string private baseURI;
     uint256 public tokenIndex;
     uint256 public transferProhibitedUntil;
+    uint256 public redeemProhibitedUntil;
     address public redeemAddress;
 
     mapping(uint256 => MetaData) public tokenMetas;
@@ -30,6 +31,7 @@ contract CarvNft is ICarvNft, ERC721, Ownable {
 
     function transferFrom(address from, address to, uint256 tokenId) public override {
         if (to == redeemAddress) {
+            require(block.timestamp > redeemProhibitedUntil, "Redeem not allowed");
             super.transferFrom(from, to, tokenId);
             return;
         }
@@ -65,6 +67,10 @@ contract CarvNft is ICarvNft, ERC721, Ownable {
 
     function setTransferProhibitedUntil(uint256 newTransferProhibitedUntil) external onlyOwner {
         transferProhibitedUntil = newTransferProhibitedUntil;
+    }
+
+    function setRedeemProhibitedUntil(uint256 newRedeemProhibitedUntil) external onlyOwner {
+        redeemProhibitedUntil = newRedeemProhibitedUntil;
     }
 
     function setRedeemAddress(address newRedeemAddress) external onlyOwner {

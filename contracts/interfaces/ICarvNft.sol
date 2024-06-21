@@ -59,6 +59,16 @@ interface ICarvNft {
     function setTransferProhibitedUntil(uint256 newTransferProhibitedUntil) external;
 
     /**
+     * @notice Set RedeemProhibitedUntil
+     * @notice When the time has not reached the `RedeemProhibitedUntil`, ordinary tokens cannot be redeemed.
+     *
+     * @dev Auth: Only Owner.
+     *
+     * @param newRedeemProhibitedUntil: newRedeemProhibitedUntil
+     */
+    function setRedeemProhibitedUntil(uint256 newRedeemProhibitedUntil) external;
+
+    /**
      * @notice Set RedeemAddress
      * @notice When `transfer.to` is RedeemAddress, the token can be transferred under any circumstances
      *

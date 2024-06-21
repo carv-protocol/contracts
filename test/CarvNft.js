@@ -122,4 +122,26 @@ describe("CarvNft", function () {
         expect((await nft.tokenMetas(1))[2]).to.equal(5);
     });
 
+    it("redeem", async function () {
+        const meta = {
+            code: "gg",
+            price: 123456,
+            tier: 5
+        }
+
+        let currentTimestamp = await time.latest()
+        const daysLater100 = 100 * 24 * 60 * 60;
+        const daysLater356 = 356 * 24 * 60 * 60;
+
+        await expect(nft.setTransferProhibitedUntil(currentTimestamp+daysLater356)).not.to.be.reverted
+        await expect(nft.setRedeemProhibitedUntil(currentTimestamp+daysLater100)).not.to.be.reverted
+        await expect(nft.mint(alice.address, 1, meta)).not.to.be.reverted
+
+        await expect(nft.connect(alice).transferFrom(alice.address, owner.address, 1)).to.be.reverted
+        await expect(nft.setRedeemAddress(owner.address)).not.to.be.reverted
+        await expect(nft.connect(alice).transferFrom(alice.address, owner.address, 1)).to.be.reverted
+        await time.increase(daysLater100);
+        await expect(nft.connect(alice).transferFrom(alice.address, owner.address, 1)).not.to.be.reverted
+    });
+
 });
