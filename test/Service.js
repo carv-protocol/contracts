@@ -37,7 +37,7 @@ describe("Service", function () {
     it("Node", async function () {
         let alice = signers[1]
 
-        await nft.connect(alice).mint();
+        await nft.mint(alice.address, 1);
 
         await expect(proxy.connect(alice).nodeEnter(alice.address)).to.be.rejected;
 
@@ -51,7 +51,7 @@ describe("Service", function () {
 
     it("Node-EIP712", async function () {
         let alice = signers[1]
-        await nft.connect(alice).mint();
+        await nft.mint(alice.address, 1);
         await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
 
         let currentTimestamp = await time.latest()
@@ -88,7 +88,7 @@ describe("Service", function () {
         let owner = signers[0]
         let alice = signers[1]
 
-        await nft.connect(alice).mint();
+        await nft.mint(alice.address, 1);
         await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
         await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
 
@@ -112,7 +112,7 @@ describe("Service", function () {
         let owner = signers[0]
         let alice = signers[1]
 
-        await nft.connect(alice).mint();
+        await nft.mint(alice.address, 1);
         await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
         await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
 
@@ -151,7 +151,7 @@ describe("Service", function () {
         await carv.approve(vault.address, E18(250000000))
         await vault.rewardsInit()
 
-        await nft.connect(alice).mint();
+        await nft.mint(alice.address, 1);
         await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
         await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
 
@@ -187,9 +187,9 @@ describe("Service", function () {
         let alice = signers[1]
         let bob = signers[2]
 
-        await nft.connect(alice).mint();
-        await nft.connect(bob).mint();
-        await nft.connect(owner).mint();
+        await nft.mint(alice.address, 1);
+        await nft.mint(bob.address, 1);
+        await nft.mint(owner.address, 1);
 
         await expect(proxy.connect(alice).delegate(1, bob.address)).not.to.be.reverted;
         await expect(proxy.connect(bob).delegate(2, bob.address)).not.to.be.reverted;

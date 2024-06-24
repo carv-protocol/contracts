@@ -1,70 +1,90 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 interface ICarvNft {
-
     /**
-     * @notice This struct represents information When users redeem NFT by CARV payment,
-     * @notice the CARV claim information is recorded in.
+     * @notice This struct represents meta information bound to TokenID,
      *
-     * `redeemer`: Redeemer of this tokenID
-     * `amount`: Total amount of repaid CARVs
-     * `claimed`: Amount of claimed CARVs
-     * `redeemTimestamp`: Timestamp when redemption was initiated
+     * `code`: code of this token entered by buyer
+     * `price`: price of this token paid by buyer
+     * `tier`: tier of this token
      */
-    struct ClaimInfo {
-        address redeemer;
-        uint256 amount;
-        uint256 claimed;
-        uint256 redeemTimestamp;
+    struct MetaData {
+        string code;
+        uint64 price;
+        uint8 tier;
     }
 
-    event Mint(address to, uint256 tokenID);
-
-    event Redeem(uint256 tokenID, uint256 amount, bool withCarv);
-
-    event Claim(uint256 tokenID, uint256 claimAmount);
-
-    event ClaimBatch(uint256[] tokenIDs, uint256 claimAmount);
-
     /**
-     * @notice mint nft.
-     * @notice tokens paid by minters are stored in the vault contract
+     * @notice mint {count} nft to {receiver}.
      * @notice totalSupply 100,000
-     * @dev Emits `Mint`.
+     *
+     * @dev Auth: Only Owner.
+     *
+     * @param receiver: nft receiver
+     * @param count: how many nft to be minted to receiver
+     * @param meta: `MetaData` of this tokenID
      */
-    function mint() external;
+    function mint(address receiver, uint256 count, MetaData calldata meta) external;
 
     /**
-     * @notice To redeem NFT, the following conditions need to be met:
-     * @notice 1. The verification rewards corresponding to this tokenID have never been received.
-     * @notice 2. At least 6 months have passed since mint this tokenID
-     * @notice There are two ways to redeem:
-     * @notice 1. by source token(like eth), 80% of the purchase price will be returned directly.
-     * @notice 2. by CARV token, The redemption reward is released linearly and lasts for one month.
-     * @notice    Users can claim it by themselves through claim().
-     * @notice After redemption, all verification rewards corresponding to the tokenID will be cleared to zero.
-     * @dev Emits `Redeem`.
-     * @param tokenID: TokenID of which needs to be redeemed
-     * @param withCarv: Indicates whether to accept CARV payment.
+     * @notice mint {counts} nft to {receivers}.
+     * @notice call `mint`
+     *
+     * @dev Auth: Only Owner.
+     *
+     * @param receivers: array of receivers
+     * @param counts: array of counts
+     * @param metas: array of meta
      */
-    function redeem(uint256 tokenID, bool withCarv) external;
+    function mintBatch(address[] calldata receivers, uint256[] calldata counts, MetaData[] calldata metas) external;
 
     /**
-     * @notice To receive redemption reward by CARV token.
-     * @notice You can only receive redemption reward by CARV token when withCarv is selected during redeem.
-     * @notice The linear release lasts for one month.
-     * @notice If it is more than one month before redemption, you can claim all of it.
-     * @notice If it is less than one month, you can claim part of it.
-     * @dev Emits `Claim`.
-     * @param tokenID: TokenID needed to receive redemption reward by CARVs
+     * @notice Set BaseURI of all the tokens
+     *
+     * @dev Auth: Only Owner.
+     *
+     * @param newBaseURI: newBaseURI
      */
-    function claim(uint256 tokenID) external;
+    function setBaseURI(string calldata newBaseURI) external;
 
     /**
-     * @notice To receive redemption reward by CARV tokens (Batch).
-     * @dev Emits `ClaimBatch`.
-     * @param tokenIDs: TokenIDs needed to receive redemption reward by CARVs
+     * @notice Set TransferProhibitedUntil
+     * @notice When the time has not reached the `TransferProhibitedUntil`, ordinary tokens cannot be transferred.
+     *
+     * @dev Auth: Only Owner.
+     *
+     * @param newTransferProhibitedUntil: newTransferProhibitedUntil
      */
-    function claimBatch(uint256[] calldata tokenIDs) external;
+    function setTransferProhibitedUntil(uint256 newTransferProhibitedUntil) external;
+
+    /**
+     * @notice Set RedeemProhibitedUntil
+     * @notice When the time has not reached the `RedeemProhibitedUntil`, ordinary tokens cannot be redeemed.
+     *
+     * @dev Auth: Only Owner.
+     *
+     * @param newRedeemProhibitedUntil: newRedeemProhibitedUntil
+     */
+    function setRedeemProhibitedUntil(uint256 newRedeemProhibitedUntil) external;
+
+    /**
+     * @notice Set RedeemAddress
+     * @notice When `transfer.to` is RedeemAddress, the token can be transferred under any circumstances
+     *
+     * @dev Auth: Only Owner.
+     *
+     * @param newRedeemAddress: newRedeemAddress
+     */
+    function setRedeemAddress(address newRedeemAddress) external;
+
+    /**
+     * @notice Set TransferOnceWhitelist
+     * @notice Addresses in the whitelist can transfer tokens once before `TransferProhibitedUntil`
+     *
+     * @dev Auth: Only Owner.
+     *
+     * @param whitelist: whitelist
+     */
+    function setTransferOnceWhitelist(address[] calldata whitelist) external;
 }
