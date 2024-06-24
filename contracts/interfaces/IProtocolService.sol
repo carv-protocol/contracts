@@ -119,21 +119,23 @@ interface IProtocolService {
     // tee
     event TeeStake(address tee, uint256 amount);
     event TeeUnstake(address tee, uint256 amount);
-    event TeeSlash(address tee, bytes32 attestationID, uint256 amount);
+    event TeeSlash(address tee, bytes32 attestationID, uint256 amount, bool valid);
     event ClaimMaliciousTeeRewards(address verifer, uint256 amount);
     event TeeReportAttestations(address tee, bytes32[] attestationIDs, string[] attestationInfos, uint256 requestID);
     event ConfirmVrfNodes(uint256 requestId, uint32[] vrfChosen, uint256 deadline);
 
     // node
     event NodeRegister(address node, uint32 id);
-    event NodeActivate(address node);
+    event NodeActivate(address node, uint32 listIndex);
     event NodeClear(address node);
-    event NodeSlash(address node, bytes32 attestationID, uint256 rewards);
+    event NodeSlash(address slasher, address node, bytes32 attestationID, uint256 rewards);
     event NodeModifyCommissionRate(address node, uint32 commissionRate);
     event NodeSetClaimer(address node, address claimer);
     event NodeClaim(address node, address claimer, uint256 rewards);
     event NodeReportVerification(address node, bytes32 attestationID, AttestationResult result);
     event NodeReportVerificationBatch(bytes32 attestationID, VerificationInfo[] infos);
+    event NodeDailyActive(address node);
+    event NodeConfirmReward(address node, int256 selfReward, uint256 delegationReward);
 
     // delegation
     event Delegate(uint256 tokenID, address to);

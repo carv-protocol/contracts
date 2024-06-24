@@ -115,7 +115,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         }
         attestation.slashed = true;
 
-        emit TeeSlash(tee, attestationID, totalSlash);
+        emit TeeSlash(tee, attestationID, totalSlash, info.valid);
     }
 
     function claimMaliciousTeeRewards(bytes32 attestationID) external {
@@ -254,13 +254,12 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         nodeInfo.selfTotalRewards -= int256(reward);
         nodeSlashed[node][attestationID] = true;
         IVault(vault).rewardsWithdraw(msg.sender, reward);
+        emit NodeSlash(msg.sender, node, attestationID, reward);
 
         if (nodeInfo.missedVerifyCount >= ISettings(settings).nodeMaxMissVerifyCount()) {
             // too many miss, force exit
             _nodeExit(node);
         }
-
-        emit NodeSlash(node, attestationID, reward);
     }
 
     function nodeReportDailyActive(address node) external {
@@ -495,7 +494,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         info.active = true;
         info.lastEnterTime = block.timestamp;
 
-        emit NodeActivate(node);
+        emit NodeActivate(node, listIndex);
     }
 
     function _nodeClear(address node) internal {
@@ -535,6 +534,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         ) {
             nodeDailyActive[node][today] += delegationWeights[node];
             globalDailyActiveNodes[today] += delegationWeights[node];
+            emit NodeDailyActive(node);
         }
     }
 
@@ -557,6 +557,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         }
 
         nodeInfo.lastConfirmDate = today-1;
+        emit NodeConfirmReward(node, nodeInfo.selfTotalRewards, nodeInfo.delegationRewards);
     }
 
     function _checkAttestation(Attestation memory attestation) internal view {

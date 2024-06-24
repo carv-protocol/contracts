@@ -7,16 +7,21 @@ contract Adminable is Initializable {
     address public admin;
     mapping(address => bool) public teeRoles;
 
+    event ModifyTeeRole(address tee, bool grant);
+    event ModifyAdmin(address newAdmin);
+
     function __Adminable_init(address admin_) internal onlyInitializing {
         admin = admin_;
     }
 
     function modifyTeeRole(address tee, bool grant) external onlyAdmin {
         teeRoles[tee] = grant;
+        emit ModifyTeeRole(tee, grant);
     }
 
     function modifyAdmin(address newAdmin) external onlyAdmin {
         admin = newAdmin;
+        emit ModifyAdmin(newAdmin);
     }
 
     modifier onlyTee() {
