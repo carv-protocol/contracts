@@ -88,8 +88,8 @@ exports.deployToken = async function() {
     const CarvToken = await ethers.getContractFactory("CarvToken");
     const veCarvToken = await ethers.getContractFactory("veCarvToken");
 
-    const carv = await CarvToken.deploy(owner.address);
-    const veCarv = await veCarvToken.deploy(carv.address, owner.address);
+    const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
+    const veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address, owner.address);
 
     return { carv, veCarv, owner, alice, bob };
 }
@@ -128,8 +128,8 @@ exports.deployAll = async function () {
 
     const aggregator = await MockAggregator.deploy();
     coordinator = await MockVRFCoordinator.deploy();
-    carv = await CarvToken.deploy(signers[0].address);
-    veCarv = await veCarvToken.deploy(carv.address, vaultAddr);
+    carv = await CarvToken.deploy("CARV", "CARV", signers[0].address);
+    veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address, vaultAddr);
     vault = await Vault.deploy(carv.address, veCarv.address);
     setting = await Settings.deploy();
     vrf = await CarvVrf.deploy(coordinator.address);

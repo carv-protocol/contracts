@@ -10,15 +10,13 @@ contract veCarvToken is IveCarv, ERC20 {
 
     address constant DEAD = 0x000000000000000000000000000000000000dEaD;
     uint256 constant ONE = 1e18;
-    string constant NAME = "veCARV";
-    string constant SYMBOL = "veCARV";
 
     uint64 public withdrawIndex;
     address public carvToken;
     address public vault;
     mapping(uint64 => WithdrawInfo) public withdrawInfos;
 
-    constructor(address carvToken_, address vault_) ERC20(NAME, SYMBOL) {
+    constructor(string memory name, string memory symbol, address carvToken_, address vault_) ERC20(name, symbol) {
         carvToken = carvToken_;
         vault = vault_;
     }
