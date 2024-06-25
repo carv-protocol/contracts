@@ -1,6 +1,6 @@
 const fs = require("fs");
 
-const Contracts = ["CarvNft", "CarvNftWhitelist", "CarvToken", "veCarvToken", "Settings", "Vault", "ProtocolService"]
+const Contracts = ["CarvNft", "CarvToken", "veCarvToken", "Settings", "Vault", "ProtocolService"]
 
 function genAbi() {
     fs.access("./artifacts/contracts", (err) => {
