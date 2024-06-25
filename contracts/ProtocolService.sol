@@ -115,7 +115,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         }
         attestation.slashed = true;
 
-        emit TeeSlash(tee, attestationID, totalSlash, info.valid);
+        emit TeeSlash(msg.sender, attestationID, totalSlash, info.valid);
     }
 
     function claimMaliciousTeeRewards(bytes32 attestationID) external {
@@ -127,7 +127,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         IVault(vault).teeWithdraw(msg.sender, reward);
         nodeClaimedTeeRewards[msg.sender][attestationID] = true;
 
-        emit ClaimMaliciousTeeRewards(msg.sender, reward);
+        emit ClaimMaliciousTeeRewards(msg.sender, attestationID, reward);
     }
 
     function teeReportAttestations(string[] memory attestationInfos) external onlyTee {
@@ -384,7 +384,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         rewardInfo.claimedRewards = rewardInfo.totalRewards;
         IVault(vault).rewardsWithdraw(msg.sender, rewards);
 
-        emit ClaimRewards(tokenID, rewards);
+        emit ClaimRewards(tokenID, msg.sender, rewards);
     }
 
     function checkClaimed(uint256 tokenID) external view returns (bool) {
@@ -534,7 +534,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         ) {
             nodeDailyActive[node][today] += delegationWeights[node];
             globalDailyActiveNodes[today] += delegationWeights[node];
-            emit NodeDailyActive(node);
+            emit NodeDailyActive(node, today);
         }
     }
 
