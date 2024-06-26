@@ -19,14 +19,10 @@ contract CarvNft is Ownable, ERC721, ICarvNft {
     mapping(uint256 => bool) public transferred;
     mapping(address => bool) public canTransferOnce;
 
-    constructor(string memory name, string memory symbol) ERC721(name, symbol) Ownable(msg.sender) {}
+    constructor(string memory name, string memory symbol) Ownable(msg.sender) ERC721(name, symbol) {}
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
         return interfaceId == type(ICarvNft).interfaceId || super.supportsInterface(interfaceId);
-    }
-
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
     }
 
     function transferFrom(address from, address to, uint256 tokenId) public override {
@@ -82,5 +78,9 @@ contract CarvNft is Ownable, ERC721, ICarvNft {
         for (uint i = 0; i < whitelist.length; i++) {
             canTransferOnce[whitelist[i]] = true;
         }
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
     }
 }
