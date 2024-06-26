@@ -150,6 +150,7 @@ exports.deployAll = async function () {
         teeUnstakeDuration: 21600,   // 6 hours
         minCommissionRateModifyInterval: 604800, // 1 week
         nodeMaxMissVerifyCount: 5,
+        maxCommissionRate: 10000,  // 100%
         maxNodeWeights: 100,
     })
 

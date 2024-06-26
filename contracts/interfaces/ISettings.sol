@@ -17,6 +17,7 @@ interface ISettings {
      * `nodeMaxMissVerifyCount`: The maximum number of times a verifier node can miss verifications.
      *                           If it exceeds the limit, it will be forced exit.
      * `minCommissionRateModifyInterval`: The minimum time interval for verifier to modify commission rate
+     * `maxCommissionRate`: The maximum rate of commission(decimals: 4)
      * `maxNodeWeights`: The maximum number of delegators a verifier node can have.
      */
     struct SettingParams {
@@ -29,6 +30,7 @@ interface ISettings {
         uint256 teeUnstakeDuration;
         uint256 minCommissionRateModifyInterval;
         uint64 nodeMaxMissVerifyCount;
+        uint32 maxCommissionRate;
         uint16 maxNodeWeights;
     }
 
@@ -49,7 +51,8 @@ interface ISettings {
     function minTeeStakeAmount() external view returns (uint256);
     function teeSlashAmount() external view returns (uint256);
     function teeUnstakeDuration() external view returns (uint256);
-    function nodeMaxMissVerifyCount() external view returns (uint64);
     function minCommissionRateModifyInterval() external view returns (uint256);
+    function nodeMaxMissVerifyCount() external view returns (uint64);
+    function maxCommissionRate() external view returns (uint32);
     function maxNodeWeights() external view returns (uint16);
 }

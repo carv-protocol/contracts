@@ -53,6 +53,7 @@ async function main() {
     teeUnstakeDuration: 21600,   // 6 hours
     minCommissionRateModifyInterval: 604800, // 1 week
     nodeMaxMissVerifyCount: 5,
+    maxCommissionRate: 10000,  // 100%
     maxNodeWeights: 100,
   })
   await tx.wait()

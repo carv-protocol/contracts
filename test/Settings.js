@@ -15,6 +15,7 @@ describe("Settings", function () {
             teeUnstakeDuration: 21600,   // 6 hours
             minCommissionRateModifyInterval: 604800, // 1 week
             nodeMaxMissVerifyCount: 5,
+            maxCommissionRate: 10000,
             maxNodeWeights: 100,
         })).not.to.be.reverted;
 
@@ -27,6 +28,7 @@ describe("Settings", function () {
         expect(await settings.teeUnstakeDuration()).to.equal(21600);
         expect(await settings.minCommissionRateModifyInterval()).to.equal(604800);
         expect(await settings.nodeMaxMissVerifyCount()).to.equal(5);
+        expect(await settings.maxCommissionRate()).to.equal(10000);
         expect(await settings.maxNodeWeights()).to.equal(100);
     });
 
