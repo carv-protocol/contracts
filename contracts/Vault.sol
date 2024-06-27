@@ -11,8 +11,8 @@ contract Vault is IVault, AccessControlUpgradeable {
     bytes32 public constant SERVICE_ROLE = keccak256("SERVICE_ROLE");
     bytes32 public constant TEE_ROLE = keccak256("TEE_ROLE");
     uint256 constant CARV_TOTAL_REWARDS = 25e7 * 1e18; // todo calculate
-    uint256 constant START_TIMESTAMP = 1704038400;
 
+    uint256 public override startTimestamp;
     address public carvToken;
     address public veCarvToken;
 
@@ -21,6 +21,7 @@ contract Vault is IVault, AccessControlUpgradeable {
     constructor(address carv, address veCarv) {
         carvToken = carv;
         veCarvToken = veCarv;
+        startTimestamp = block.timestamp;
     }
 
     function initialize(address foundation, address service) public initializer {
@@ -86,10 +87,6 @@ contract Vault is IVault, AccessControlUpgradeable {
         _revokeRole(FOUNDATION_ROLE, msg.sender);
         _grantRole(FOUNDATION_ROLE, newFoundation);
         emit ChangeFoundation(newFoundation);
-    }
-
-    function startTimestamp() external pure returns (uint256) {
-        return START_TIMESTAMP;
     }
 
     function totalRewardByDate(uint32 dateIndex) external pure returns (uint256) {
