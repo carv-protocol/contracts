@@ -121,12 +121,10 @@ exports.deployAll = async function () {
     const CarvVrf = await ethers.getContractFactory("CarvVrf");
     const ProtocolService = await ethers.getContractFactory("ProtocolService");
     const Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
-    const MockAggregator = await ethers.getContractFactory("Aggregator");
     const MockVRFCoordinator = await ethers.getContractFactory("VRFCoordinator");
 
-    const vaultAddr = contractAddr(signers[0].address, (await signers[0].getTransactionCount()) + 4)
+    const vaultAddr = contractAddr(signers[0].address, (await signers[0].getTransactionCount()) + 3)
 
-    const aggregator = await MockAggregator.deploy();
     coordinator = await MockVRFCoordinator.deploy();
     carv = await CarvToken.deploy("CARV", "CARV", signers[0].address);
     veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address, vaultAddr);
@@ -139,7 +137,7 @@ exports.deployAll = async function () {
     proxy = ProtocolService.attach(proxy.address)
     await proxy.initialize(carv.address, nft.address, vault.address, 42161)
 
-    await vault.initialize(signers[0].address, nft.address, proxy.address)
+    await vault.initialize(signers[0].address, proxy.address)
     await setting.updateSettings({
         maxVrfActiveNodes: 2000,
         nodeMinOnlineDuration: 21600, // 6 hours
@@ -154,7 +152,6 @@ exports.deployAll = async function () {
         maxNodeWeights: 100,
     })
 
-    await vault.updateAggregatorAddress(aggregator.address);
     await vrf.updateVrfConfig({
         keyHash: "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae",
         subId: 100,

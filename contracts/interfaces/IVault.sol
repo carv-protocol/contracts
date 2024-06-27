@@ -5,10 +5,6 @@ interface IVault {
 
     event FoundationWithdraw(address token, uint256 amount);
 
-    event NftDeposit(uint256 amount);
-
-    event NftWithdraw(uint256 amount, bool withCarv);
-
     event TeeDeposit(uint256 amount);
 
     event TeeWithdraw(address to, uint256 amount);
@@ -18,8 +14,6 @@ interface IVault {
     event RewardsWithdraw();
 
     event ChangeFoundation(address newFoundation);
-
-    event UpdateAggregator(address aggregator);
 
     /**
      * @notice Withdraw token by foundation: by specifying the token address and amount.
@@ -31,25 +25,6 @@ interface IVault {
      * @param amount: amount of withdraw token
      */
     function foundationWithdraw(address token, uint256 amount) external;
-
-    /**
-     * @notice Deposit minter-paid ETH to Vault contract
-     * @notice Only foundation authority can operate
-     *
-     * @dev Emits `NftDeposit`.
-     */
-    function nftDeposit(uint256 count) external payable;
-
-    /**
-     * @notice Called by CarvNft contract when users redeem nft.
-     * @notice eth will pay back to user or exchange for CARV to pay back (exchange with the foundation)
-     * @notice The exchange rate between CARV and eth will be obtained from chainlink
-     *
-     * @dev Emits `NftWithdraw`.
-     *
-     * @param withCarv: whether to pay back with CARV (if not, use eth).
-     */
-    function nftWithdraw(bool withCarv) external returns (uint256 amount);
 
     /**
      * @notice Deposit tee staked CARV to Vault contract (convert to veCARV).
@@ -99,18 +74,6 @@ interface IVault {
      * @param newFoundation: address of new foundation.
      */
     function changeFoundation(address newFoundation) external;
-
-    /**
-     * @notice Change the address of aggregator.
-     * @notice can only be operated by foundation authority
-     *
-     * @dev Emits `UpdateAggregator`.
-     *
-     * @param carvAggregator_: address of aggregator(carv/eth).
-     */
-    function updateAggregatorAddress(address carvAggregator_) external;
-
-    function oracle(uint256 ethAmount) external view returns (uint256 carvAmount);
 
     function startTimestamp() external pure returns (uint256);
 
