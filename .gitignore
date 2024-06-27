@@ -5,6 +5,8 @@ coverage.json
 typechain
 typechain-types
 
+local_scripts
+
 #Hardhat files
 cache
 artifacts
