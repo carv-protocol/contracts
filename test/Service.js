@@ -208,4 +208,62 @@ describe("Service", function () {
         await expect(proxy.connect(alice).undelegate(1)).not.to.be.reverted;
         expect(await proxy.delegationWeights(bob.address)).to.equal(0);
     })
+
+    it("Node Replace", async function () {
+        let alice = signers[1]
+        let bob = signers[2]
+        let cindy = signers[3]
+        let david = signers[4]
+        let tokenIndex = await nft.tokenIndex()
+
+        await setting.updateSettings({
+            maxVrfActiveNodes: 3,
+            nodeMinOnlineDuration: 21600, // 6 hours
+            nodeVerifyDuration: 1800,  // 30 minutes
+            nodeSlashReward: E18(10) ,  // 10 veCARV
+            minTeeStakeAmount: E18(1e5),  // 10,000 CARV
+            teeSlashAmount: E18(100),      // 100 veCARV
+            teeUnstakeDuration: 21600,   // 6 hours
+            minCommissionRateModifyInterval: 604800, // 1 week
+            nodeMaxMissVerifyCount: 5,
+            maxCommissionRate: 10000,  // 100%
+            maxNodeWeights: 100,
+        })
+
+        await nft.mint(alice.address, 2, {code:"", price: 0, tier: 0});
+        await proxy.connect(alice).delegate(tokenIndex+1, alice.address)
+        await proxy.connect(alice).delegate(tokenIndex+2, alice.address)
+        await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.rejected;
+
+        await nft.mint(bob.address, 3, {code:"", price: 0, tier: 0});
+        await proxy.connect(bob).delegate(tokenIndex+3, bob.address)
+        await proxy.connect(bob).delegate(tokenIndex+4, bob.address)
+        await proxy.connect(bob).delegate(tokenIndex+5, bob.address)
+        await expect(proxy.connect(bob).nodeEnter(bob.address)).not.to.be.rejected;
+
+        await nft.mint(cindy.address, 1, {code:"", price: 0, tier: 0});
+        await proxy.connect(cindy).delegate(tokenIndex+6, cindy.address)
+        await expect(proxy.connect(cindy).nodeEnter(cindy.address)).not.to.be.rejected;
+
+        await nft.mint(david.address, 2, {code:"", price: 0, tier: 0});
+        await proxy.connect(david).delegate(tokenIndex+7, david.address)
+        await proxy.connect(david).delegate(tokenIndex+8, david.address)
+        await expect(proxy.connect(david).nodeEnter(bob.address)).to.be.rejected;
+        await expect(proxy.connect(david).nodeEnter(alice.address)).to.be.rejected;
+        await expect(proxy.connect(david).nodeEnter(cindy.address)).not.to.be.rejected;
+
+        await setting.updateSettings({
+            maxVrfActiveNodes: 2000,
+            nodeMinOnlineDuration: 21600, // 6 hours
+            nodeVerifyDuration: 1800,  // 30 minutes
+            nodeSlashReward: E18(10) ,  // 10 veCARV
+            minTeeStakeAmount: E18(1e5),  // 10,000 CARV
+            teeSlashAmount: E18(100),      // 100 veCARV
+            teeUnstakeDuration: 21600,   // 6 hours
+            minCommissionRateModifyInterval: 604800, // 1 week
+            nodeMaxMissVerifyCount: 5,
+            maxCommissionRate: 10000,  // 100%
+            maxNodeWeights: 100,
+        })
+    });
 });
