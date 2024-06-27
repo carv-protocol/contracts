@@ -135,7 +135,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         require(tee.valid, "Invalid");
         tee.lastReportAt = block.timestamp;
 
-        uint256 requestId = ICarvVrf(carvVrf).requestRandomWords();
+        uint256 requestId = ICarvVrf(carvVrf).requestRandomWords(false);
 
         bytes32[] memory attestationIDs = new bytes32[](attestationInfos.length);
         for (uint index = 0; index < attestationInfos.length; index++) {

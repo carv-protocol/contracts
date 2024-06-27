@@ -2,5 +2,5 @@
 pragma solidity ^0.8.20;
 
 interface ICarvVrf {
-    function requestRandomWords() external returns (uint256);
+    function requestRandomWords(bool) external returns (uint256);
 }
