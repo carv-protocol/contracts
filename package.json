@@ -34,7 +34,6 @@
   },
   "scripts": {
     "test": "mocha",
-    "compile": "hardhat compile",
-    "scripts": "npx hardhat run"
+    "compile": "hardhat compile"
   }
 }

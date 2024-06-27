@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.20;
 
-// import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
-// import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
-
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
-
 
 import "./interfaces/ICarvVrf.sol";
 import "./interfaces/ICarvVrfCallback.sol";
@@ -19,6 +15,7 @@ contract CarvVrf is VRFConsumerBaseV2Plus, ICarvVrf {
         uint16 requestConfirmations;
         uint32 callbackGasLimit;
         uint32 numWords;
+        bool enableNativePayment;
     }
 
     VrfConfigData public vrfConfig;
@@ -48,10 +45,7 @@ contract CarvVrf is VRFConsumerBaseV2Plus, ICarvVrf {
         emit RevokeCaller(caller);
     }
 
-    function requestRandomWords( 
-        bool enableNativePayment
-    ) external onlyAllowed override returns (uint256) {
-
+    function requestRandomWords() external onlyAllowed override returns (uint256) {
         uint256 requestID = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: vrfConfig.keyHash,
@@ -61,7 +55,7 @@ contract CarvVrf is VRFConsumerBaseV2Plus, ICarvVrf {
                 numWords: vrfConfig.numWords,
                 extraArgs: VRFV2PlusClient._argsToBytes(
                     VRFV2PlusClient.ExtraArgsV1({
-                        nativePayment: enableNativePayment
+                        nativePayment: vrfConfig.enableNativePayment
                     })
                 )
             })
@@ -74,7 +68,7 @@ contract CarvVrf is VRFConsumerBaseV2Plus, ICarvVrf {
     // chainlink VRF callback function
     // According to random words, emit event to decide nodes verifying
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
-        // ICarvVrfCallback(requestCaller[requestId]).fulfillRandomWords(requestId, randomWords);
+         ICarvVrfCallback(requestCaller[requestId]).fulfillRandomWords(requestId, randomWords);
     }
 
     modifier onlyAllowed() {

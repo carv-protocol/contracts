@@ -37,7 +37,7 @@ module.exports = {
     arb_nft: {
       url: process.env.API_KEY_URL_ARB_ONE,
       accounts: [process.env.ARB_NFT_PRIVATE_KEY],
-      gasPrice: 110000000,
+      gasPrice: 20000000,
     }
   }
 };
