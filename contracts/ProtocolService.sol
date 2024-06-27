@@ -392,7 +392,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     }
 
     function todayIndex() public view returns (uint32) {
-        return uint32((block.timestamp - IVault(vault).startTimestamp()) / (1 days));
+        return uint32((block.timestamp - IVault(vault).startTimestamp()) / (1 days)) + 1;
     }
 
     function todayOffset() public view returns (uint256) {

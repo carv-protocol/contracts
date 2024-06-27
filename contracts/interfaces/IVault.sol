@@ -75,7 +75,7 @@ interface IVault {
      */
     function changeFoundation(address newFoundation) external;
 
-    function startTimestamp() external pure returns (uint256);
+    function startTimestamp() external view returns (uint256);
 
     function totalRewardByDate(uint32 dateIndex) external pure returns (uint256);
 }
