@@ -21,45 +21,45 @@ async function main() {
     const ProtocolService = await hre.ethers.getContractFactory("ProtocolService");
     const Proxy = await hre.ethers.getContractFactory("TransparentUpgradeableProxy");
 
-    // calculate contract address
-    const vaultAddr = contractAddr(deployer.address, (await deployer.getTransactionCount()) + 2)
-    console.log(vaultAddr)
-
-    // deploy token
-    let carv = await CarvToken.deploy(carvName, carvSymbol, deployer.address);
-    await carv.deployed()
-    console.log("carv: ", carv.address)
-
-    let veCarv = await veCarvToken.deploy(veCarvName, veCarvSymbol, carv.address, vaultAddr);
-    await veCarv.deployed()
-    console.log("veCarv: ", veCarv.address)
-
-    // deploy vault
-    let vault = await Vault.deploy(carv.address, veCarv.address);
-    await vault.deployed()
-    console.log("vault: ", vault.address)
-
-    // deploy service
-    let setting = await Settings.deploy();
-    await setting.deployed()
-    console.log("setting: ", setting.address)
-
-    let vrf = await CarvVrf.deploy(coordinatorAddress);
-    await vrf.deployed()
-    console.log("vrf: ", vrf.address)
+    // // calculate contract address
+    // const vaultAddr = contractAddr(deployer.address, (await deployer.getTransactionCount()) + 2)
+    // console.log(vaultAddr)
+    //
+    // // deploy token
+    // let carv = await CarvToken.deploy(carvName, carvSymbol, deployer.address);
+    // await carv.deployed()
+    // console.log("carv: ", carv.address)
+    //
+    // let veCarv = await veCarvToken.deploy(veCarvName, veCarvSymbol, carv.address, vaultAddr);
+    // await veCarv.deployed()
+    // console.log("veCarv: ", veCarv.address)
+    //
+    // // deploy vault
+    // let vault = await Vault.deploy(carv.address, veCarv.address);
+    // await vault.deployed()
+    // console.log("vault: ", vault.address)
+    //
+    // // deploy service
+    // let setting = await Settings.deploy();
+    // await setting.deployed()
+    // console.log("setting: ", setting.address)
+    //
+    // let vrf = await CarvVrf.deploy(coordinatorAddress);
+    // await vrf.deployed()
+    // console.log("vrf: ", vrf.address)
 
     let service = await ProtocolService.deploy();
     await service.deployed()
     console.log("service: ", service.address)
 
-    // deploy proxy
-    let proxy = await Proxy.deploy(service.address, deployer.address, hre.ethers.utils.toUtf8Bytes(""), overrides)
-    await proxy.deployed()
-    console.log("proxy: ", proxy.address)
-
-    // admin address
-    let adminAddr = await hre.upgrades.erc1967.getAdminAddress(proxy.address)
-    console.log("admin: ", adminAddr)
+    // // deploy proxy
+    // let proxy = await Proxy.deploy(service.address, deployer.address, hre.ethers.utils.toUtf8Bytes(""), overrides)
+    // await proxy.deployed()
+    // console.log("proxy: ", proxy.address)
+    //
+    // // admin address
+    // let adminAddr = await hre.upgrades.erc1967.getAdminAddress(proxy.address)
+    // console.log("admin: ", adminAddr)
 }
 
 function contractAddr(deployer, nonce) {

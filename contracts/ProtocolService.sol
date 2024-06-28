@@ -548,7 +548,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         }
 
         for (uint32 dateIndex = nodeInfo.lastConfirmDate+1; dateIndex < today; dateIndex++) {
-            if (globalDailyActiveNodes[dateIndex] == 0) {
+            if (globalDailyActiveNodes[dateIndex] == 0 || nodeDailyActive[node][dateIndex] == 0) {
                 continue;
             }
             uint256 unitReward = IVault(vault).totalRewardByDate(dateIndex) / globalDailyActiveNodes[dateIndex];
