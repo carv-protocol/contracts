@@ -8,7 +8,7 @@ const vaultAddr = "0xD75C3958Ce45076C3e07AD46fa1Bb447b02ef041"
 const serviceAddr = "0xC4638205c2fB6374DdB009bA526603dcBd5759b8"
 const proxyAddr = "0xd35AF24099f6BAd4690eD6E858273580e2b1954A"
 const settingAddr = "0xB861B55920772D17a4aED4923017FA4A67Feac6E"
-const vrfAddr = "0x9a2B3a86a93bEc8e8318A6Ff0E0287b1eb785E8B"
+const vrfAddr = "0xee722312d90579E09aCC117D0e090D38c3a9FdF1"
 
 const serviceConfig = {
     maxVrfActiveNodes: 2000,
@@ -24,10 +24,10 @@ const serviceConfig = {
     maxNodeWeights: 100,
 }
 const vrfConfig = {
-    keyHash: "0x1770bdc7eec7771f7ba4ffd640f34260d7f095b79c92d34a5b2551d6f6cfd2be",
+    keyHash: "0x8472ba59cf7134dfe321f4d61a430c4857e8b19cdd5230b09952a92671c24409",
     subId: "15064785153228559465248773078908350745285477278877473237747083654201889057496",
     requestConfirmations: 1,
-    callbackGasLimit: 10000000,
+    callbackGasLimit: 2000000,
     numWords: 1,
     enableNativePayment: false,
 }
