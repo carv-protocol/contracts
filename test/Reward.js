@@ -34,8 +34,8 @@ describe("Service", function () {
         // await time.increase(hours24);
         // await proxy.connect(alice).nodeReportDailyActive(alice.address)
 
-        console.log(await proxy.nodeInfos(alice.address))
-        console.log(await proxy.nodeInfos(bob.address))
+        // console.log(await proxy.nodeInfos(alice.address))
+        // console.log(await proxy.nodeInfos(bob.address))
 
         // await expect(proxy.connect(alice).nodeClaim()).not.to.be.reverted
 
