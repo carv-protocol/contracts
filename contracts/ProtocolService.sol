@@ -150,6 +150,26 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         emit TeeReportAttestations(msg.sender, attestationIDs, attestationInfos, requestId);
     }
 
+    // chainlink VRF callback function
+    // According to random words, emit event to decide nodes verifying
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) external onlyCarvVrf override {
+        require(randomWords.length > 0, "Wrong randomWords");
+
+        uint256 deadline = block.timestamp + ISettings(settings).nodeVerifyDuration();
+        uint32[] memory vrfChosen = _vrfChooseNodes(randomWords[0]);
+        vrfChosenIndex++;
+        vrfChosenMap[vrfChosenIndex] = vrfChosen;
+
+        bytes32[] memory attestationIDs = request2AttestationIDs[requestId];
+        for (uint index = 0; index < attestationIDs.length; index++) {
+            Attestation storage attestation = attestations[attestationIDs[index]];
+            attestation.deadline = deadline;
+            attestation.vrfChosenID = vrfChosenIndex;
+        }
+
+        emit ConfirmVrfNodes(requestId, vrfChosen, deadline);
+    }
+
     function nodeEnter(address replacedNode) external {
         _nodeEnter(msg.sender, replacedNode);
     }
@@ -242,7 +262,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
 
     function nodeSlash(address node, bytes32 attestationID, uint32 index) external {
         Attestation storage attestation = attestations[attestationID];
-        require(attestation.deadline > block.timestamp, "Deadline");
+        require(attestation.deadline < block.timestamp, "Deadline");
 
         NodeInfo storage nodeInfo = nodeInfos[node];
         require(!nodeSlashed[node][attestationID], "Already slashed");
@@ -401,26 +421,6 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
 
     /*----------------------------------------- internal functions --------------------------------------------*/
 
-    // chainlink VRF callback function
-    // According to random words, emit event to decide nodes verifying
-    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) external onlyCarvVrf override {
-        require(randomWords.length > 0, "Wrong randomWords");
-
-        uint256 deadline = block.timestamp + ISettings(settings).nodeVerifyDuration();
-        uint32[] memory vrfChosen = _vrfChooseNodes(randomWords[0]);
-        vrfChosenIndex++;
-        vrfChosenMap[vrfChosenIndex] = vrfChosen;
-
-        bytes32[] memory attestationIDs = request2AttestationIDs[requestId];
-        for (uint index = 0; index < attestationIDs.length; index++) {
-            Attestation storage attestation = attestations[attestationIDs[index]];
-            attestation.deadline = deadline;
-            attestation.vrfChosenID = vrfChosenIndex;
-        }
-
-        emit ConfirmVrfNodes(requestId, vrfChosen, deadline);
-    }
-
     // if number of active nodes is less than 10, choose all active nodes
     // if number of active nodes is more than 10 and less than 100, choose 10 active nodes randomly
     // if number of active node is more than 100, choose 1/10 of active nodes randomly
@@ -552,8 +552,8 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
                 continue;
             }
             uint256 unitReward = IVault(vault).totalRewardByDate(dateIndex) / globalDailyActiveNodes[dateIndex];
-            uint256 commissionReward = (unitReward * nodeInfo.commissionRate / 1e4) * nodeDailyActive[node][dateIndex];
-            nodeInfo.selfTotalRewards += int256(commissionReward);
+            uint256 commissionReward = unitReward * nodeInfo.commissionRate / 1e4;
+            nodeInfo.selfTotalRewards += int256(commissionReward * nodeDailyActive[node][dateIndex]);
             nodeInfo.delegationRewards += unitReward - commissionReward;
         }
 

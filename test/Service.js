@@ -266,4 +266,96 @@ describe("Service", function () {
             maxNodeWeights: 100,
         })
     });
+
+    it("Node Slash", async function () {
+        await carv.approve(vault.address, E18(250000000))
+        await vault.rewardsInit()
+
+        let owner = signers[0]
+        let alice = signers[1]
+
+        await nft.mint(alice.address, 1, {code:"", price: 0, tier: 0});
+        await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
+        await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
+
+        await expect(proxy.modifyTeeRole(owner.address, true)).not.to.be.reverted;
+        await carv.approve(proxy.address, E18(1000000))
+        await expect(proxy.teeStake(E18(1000000))).not.to.be.reverted;
+
+        // ------
+        await expect(proxy.teeReportAttestations(["test"])).not.to.be.reverted;
+        await coordinator.callback(1, [123456789])
+        await proxy.connect(alice).nodeReportVerification(
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
+            0,
+            1
+        )
+        await expect(proxy.nodeSlash(
+            alice.address,
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
+            0
+        )).to.be.reverted;
+        const hour = 3600
+        await time.increase(hour);
+
+        await expect(proxy.nodeSlash(
+            alice.address,
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
+            0
+        )).to.be.reverted;
+
+        // ------
+        await expect(proxy.teeReportAttestations(["test1"])).not.to.be.reverted;
+        await coordinator.callback(2, [123456789])
+
+        await time.increase(hour);
+
+        await expect(proxy.nodeSlash(
+            alice.address,
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test1")),
+            0
+        )).not.to.be.reverted;
+
+        // console.log(await proxy.nodeInfos(alice.address))
+
+        // ------
+        await expect(proxy.teeReportAttestations(["test2"])).not.to.be.reverted;
+        await coordinator.callback(3, [123456789])
+        await time.increase(hour);
+        await expect(proxy.nodeSlash(
+            alice.address,
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test2")),
+            0
+        )).not.to.be.reverted;
+        // ------
+        await expect(proxy.teeReportAttestations(["test3"])).not.to.be.reverted;
+        await coordinator.callback(4, [123456789])
+        await time.increase(hour);
+        await expect(proxy.nodeSlash(
+            alice.address,
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test3")),
+            0
+        )).not.to.be.reverted;
+        // ------
+        await expect(proxy.teeReportAttestations(["test4"])).not.to.be.reverted;
+        await coordinator.callback(5, [123456789])
+        await time.increase(hour);
+        await expect(proxy.nodeSlash(
+            alice.address,
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test4")),
+            0
+        )).not.to.be.reverted;
+        // ------
+        await expect(proxy.teeReportAttestations(["test5"])).not.to.be.reverted;
+        await coordinator.callback(6, [123456789])
+        await time.increase(hour);
+        await expect(proxy.nodeSlash(
+            alice.address,
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test5")),
+            0
+        )).not.to.be.reverted;
+
+        // console.log(await proxy.nodeInfos(alice.address))
+
+    });
 });

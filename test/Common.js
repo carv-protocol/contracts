@@ -1,4 +1,5 @@
 const { ethers } = require("hardhat");
+const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 exports.E = function(x, d) {
     return e(x, d)
@@ -123,12 +124,13 @@ exports.deployAll = async function () {
     const Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
     const MockVRFCoordinator = await ethers.getContractFactory("VRFCoordinator");
 
+    const startTimestamp = await time.latest() //1719792000
     const vaultAddr = contractAddr(signers[0].address, (await signers[0].getTransactionCount()) + 3)
 
     coordinator = await MockVRFCoordinator.deploy();
     carv = await CarvToken.deploy("CARV", "CARV", signers[0].address);
     veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address, vaultAddr);
-    vault = await Vault.deploy(carv.address, veCarv.address);
+    vault = await Vault.deploy(carv.address, veCarv.address, startTimestamp);
     setting = await Settings.deploy();
     vrf = await CarvVrf.deploy(coordinator.address);
     service = await ProtocolService.deploy();

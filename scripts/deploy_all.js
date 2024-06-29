@@ -1,10 +1,11 @@
 const hre = require("hardhat");
 
 const coordinatorAddress = "0x3c0ca683b403e37668ae3dc4fb62f4b29b6f7a3e";
-const carvName = "CT"
-const carvSymbol = "CT"
-const veCarvName = "VCT"
-const veCarvSymbol = "VCT"
+const startTimestamp = 1719792000
+const carvName = "Alpha CARV"
+const carvSymbol = "Alpha CARV"
+const veCarvName = "Alpha veCARV"
+const veCarvSymbol = "Alpha veCARV"
 
 const overrides = {
     gasLimit: 60000000,
@@ -35,7 +36,7 @@ async function main() {
     // console.log("veCarv: ", veCarv.address)
     //
     // // deploy vault
-    // let vault = await Vault.deploy(carv.address, veCarv.address);
+    // let vault = await Vault.deploy(carv.address, veCarv.address, startTimestamp);
     // await vault.deployed()
     // console.log("vault: ", vault.address)
     //
@@ -47,11 +48,11 @@ async function main() {
     // let vrf = await CarvVrf.deploy(coordinatorAddress);
     // await vrf.deployed()
     // console.log("vrf: ", vrf.address)
-
-    let service = await ProtocolService.deploy();
-    await service.deployed()
-    console.log("service: ", service.address)
-
+    //
+    // let service = await ProtocolService.deploy();
+    // await service.deployed()
+    // console.log("service: ", service.address)
+    //
     // // deploy proxy
     // let proxy = await Proxy.deploy(service.address, deployer.address, hre.ethers.utils.toUtf8Bytes(""), overrides)
     // await proxy.deployed()

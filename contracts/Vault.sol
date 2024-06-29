@@ -18,10 +18,10 @@ contract Vault is IVault, AccessControlUpgradeable {
 
     mapping(bytes32 => mapping(address => uint256)) public assets;
 
-    constructor(address carv, address veCarv) {
+    constructor(address carv, address veCarv, uint256 startTimestamp_) {
         carvToken = carv;
         veCarvToken = veCarv;
-        startTimestamp = block.timestamp;
+        startTimestamp = startTimestamp_;
     }
 
     function initialize(address foundation, address service) public initializer {
