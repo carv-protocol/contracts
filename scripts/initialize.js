@@ -2,23 +2,23 @@ const hre = require("hardhat");
 
 const chainID = 42161;
 const nftAddr = "0x6584533decbcb8c05fb7EAbFa93f92b7b3A85038"
-const carvAddr = "0x9185D228478e1c88E06eFEBb66e5911e64b3192B"
-const veCarvAddr = "0x8852154aa877b0a00A11fAfCCCAd72E230eF2D55"
-const vaultAddr = "0xD75C3958Ce45076C3e07AD46fa1Bb447b02ef041"
-const serviceAddr = "0xf14D1BA8e14BB8C6Bfa4608488f0Ca80e6548Efb"
-const proxyAddr = "0xd35AF24099f6BAd4690eD6E858273580e2b1954A"
-const settingAddr = "0xB861B55920772D17a4aED4923017FA4A67Feac6E"
-const vrfAddr = "0xee722312d90579E09aCC117D0e090D38c3a9FdF1"
+const carvAddr = "0x903CF971c3Cbd482DD351f9E8DB420314C4a5886"
+const veCarvAddr = "0xA0DdA481F6893CE04c41f13eAe5b13980C2F31fE"
+const vaultAddr = "0xA88c25267753B05BA2C24fC8565a47f7aA380Cda"
+const serviceAddr = "0xFE7Fdfc9D50eeEeC78d75015F9BD6157Eb937779"
+const proxyAddr = "0xFFbB58c8370f99b2ae619328D6B99D77Fef190Cb"
+const settingAddr = "0x1aa70E340B0e76CeDA1247e1ef28E603BD4b5585"
+const vrfAddr = "0x26fcc204ec9A9289C9703a317B29B0A67a6Fa099"
 
 const serviceConfig = {
     maxVrfActiveNodes: 2000,
     nodeMinOnlineDuration: 21600, // 6 hours
     nodeVerifyDuration: 1800,  // 30 minutes
     nodeSlashReward: e18(10) ,  // 10 veCARV
-    minTeeStakeAmount: e18(1e5),  // 10,000 CARV
-    teeSlashAmount: e18(100),      // 100 veCARV
+    minTeeStakeAmount: e18(1e5),  // 100,000 CARV
+    teeSlashAmount: e18(10),      // 10 veCARV
     teeUnstakeDuration: 21600,   // 6 hours
-    minCommissionRateModifyInterval: 300, // 604800, // 1 week
+    minCommissionRateModifyInterval: 604800, // 604800, // 1 week
     nodeMaxMissVerifyCount: 5,
     maxCommissionRate: 10000,  // 100%
     maxNodeWeights: 100,
