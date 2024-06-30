@@ -38,7 +38,7 @@ contract Vault is IVault, AccessControlUpgradeable {
     function foundationWithdraw(address token, uint256 amount) external onlyRole(FOUNDATION_ROLE) {
         if (token == address(0)) {
             require(
-                amount >= address(this).balance - (assets[SERVICE_ROLE][token] + assets[TEE_ROLE][token]),
+                amount <= address(this).balance - (assets[SERVICE_ROLE][token] + assets[TEE_ROLE][token]),
                 "Insufficient eth"
             );
 
@@ -46,7 +46,7 @@ contract Vault is IVault, AccessControlUpgradeable {
             require(success, "Call foundation");
         } else {
             require(
-                amount >= IERC20(token).balanceOf(address(this)) - (assets[SERVICE_ROLE][token] + assets[TEE_ROLE][token]),
+                amount <= IERC20(token).balanceOf(address(this)) - (assets[SERVICE_ROLE][token] + assets[TEE_ROLE][token]),
                 "Insufficient erc20"
             );
 

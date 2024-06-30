@@ -109,6 +109,23 @@ exports.deployNft = async function () {
     return [owner, alice, bob, cindy, nft]
 }
 
+exports.deployVault = async function () {
+    const [owner, service, alice] = await ethers.getSigners();
+
+    const CarvToken = await ethers.getContractFactory("CarvToken");
+    const veCarvToken = await ethers.getContractFactory("veCarvToken");
+    const Vault = await ethers.getContractFactory("Vault");
+
+    const vaultAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 2)
+
+    const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
+    const veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address, vaultAddr);
+    const vault = await Vault.deploy(carv.address, veCarv.address, 1719792000);
+
+    await vault.initialize(owner.address, service.address)
+    return [owner, service, alice, vault, carv, veCarv]
+}
+
 exports.deployAll = async function () {
     let carv, veCarv, nft, vault, setting, vrf, proxy, service, coordinator
 
