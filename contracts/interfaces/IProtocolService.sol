@@ -360,6 +360,14 @@ interface IProtocolService {
     function nodeReportDailyActive(address node) external;
 
     /**
+     * @notice Confirm the node reward,
+     * @notice the smart contract needs to be notified through this function to update the reward of the node before today.
+     *
+     * @param node: address of the node to confirm rewards
+     */
+    function confirmNodeRewards(address node) external;
+
+    /**
      * @notice After an attestation is reported, a group of nodes will be randomly selected through chainlink's VRF.
      * @notice These nodes need to submit the verification within the specified time.
      * @notice When a node is selected by VRF, the proof is submitted by calling `nodeReportVerification`.

@@ -250,7 +250,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         NodeInfo storage nodeInfo = nodeInfos[node];
         require(nodeInfo.id > 0, "Not register");
         require(msg.sender == node || msg.sender == nodeInfo.claimer, "Cannot claim");
-        _confirmNodeRewards(node);
+        confirmNodeRewards(node);
         require(nodeInfo.selfTotalRewards > int256(nodeInfo.selfClaimedRewards), "No reward");
 
         uint256 rewards = uint256(nodeInfo.selfTotalRewards) - nodeInfo.selfClaimedRewards;
@@ -285,7 +285,28 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     function nodeReportDailyActive(address node) external {
         require(nodeInfos[node].active, "Inactive node");
         _updateNodeDailyActive(node);
-        _confirmNodeRewards(node);
+    }
+
+    function confirmNodeRewards(address node) public {
+        uint32 today = todayIndex();
+        NodeInfo storage nodeInfo = nodeInfos[node];
+
+        if (nodeInfo.lastConfirmDate == today-1) {
+            return;
+        }
+
+        for (uint32 dateIndex = nodeInfo.lastConfirmDate+1; dateIndex < today; dateIndex++) {
+            if (globalDailyActiveNodes[dateIndex] == 0 || nodeDailyActive[node][dateIndex] == 0) {
+                continue;
+            }
+            uint256 unitReward = IVault(vault).totalRewardByDate(dateIndex) / globalDailyActiveNodes[dateIndex];
+            uint256 commissionReward = unitReward * nodeInfo.commissionRate / 1e4;
+            nodeInfo.selfTotalRewards += int256(commissionReward * nodeDailyActive[node][dateIndex]);
+            nodeInfo.delegationRewards += unitReward - commissionReward;
+        }
+
+        nodeInfo.lastConfirmDate = today-1;
+        emit NodeConfirmReward(node, nodeInfo.selfTotalRewards, nodeInfo.delegationRewards);
     }
 
     function nodeReportVerification(bytes32 attestationID, uint32 index, AttestationResult result) external {
@@ -505,7 +526,6 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         info.missedVerifyCount = 0;
 
         _updateNodeDailyActive(node);
-        _confirmNodeRewards(node);
         emit NodeClear(node);
     }
 
@@ -537,28 +557,6 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
             globalDailyActiveNodes[today] += delegationWeights[node];
             emit NodeDailyActive(node, today);
         }
-    }
-
-    function _confirmNodeRewards(address node) internal {
-        uint32 today = todayIndex();
-        NodeInfo storage nodeInfo = nodeInfos[node];
-
-        if (nodeInfo.lastConfirmDate == today-1) {
-            return;
-        }
-
-        for (uint32 dateIndex = nodeInfo.lastConfirmDate+1; dateIndex < today; dateIndex++) {
-            if (globalDailyActiveNodes[dateIndex] == 0 || nodeDailyActive[node][dateIndex] == 0) {
-                continue;
-            }
-            uint256 unitReward = IVault(vault).totalRewardByDate(dateIndex) / globalDailyActiveNodes[dateIndex];
-            uint256 commissionReward = unitReward * nodeInfo.commissionRate / 1e4;
-            nodeInfo.selfTotalRewards += int256(commissionReward * nodeDailyActive[node][dateIndex]);
-            nodeInfo.delegationRewards += unitReward - commissionReward;
-        }
-
-        nodeInfo.lastConfirmDate = today-1;
-        emit NodeConfirmReward(node, nodeInfo.selfTotalRewards, nodeInfo.delegationRewards);
     }
 
     function _checkAttestation(Attestation memory attestation) internal view {
