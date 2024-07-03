@@ -480,6 +480,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
 
         require(delegationWeights[node] > delegationWeights[replacedNode], "Less weights");
         NodeInfo storage replacedNodeInfo = nodeInfos[replacedNode];
+        require(replacedNodeInfo.active, "Replaced node is not active");
         activeVrfNodeList[replacedNodeInfo.listIndex] = nodeInfos[node].id;
         _nodeActivate(node, replacedNodeInfo.listIndex);
         _nodeClear(replacedNode);
