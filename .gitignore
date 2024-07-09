@@ -6,6 +6,7 @@ typechain
 typechain-types
 
 local_scripts
+oft_scripts
 
 #Hardhat files
 cache
