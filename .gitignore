@@ -7,6 +7,7 @@ typechain-types
 
 local_scripts
 oft_scripts
+testnet_scripts
 
 #Hardhat files
 cache
