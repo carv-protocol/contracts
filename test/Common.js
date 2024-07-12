@@ -215,3 +215,11 @@ function e(x, d) {
 function e18(x) {
     return ethers.BigNumber.from("1000000000000000000").mul(x)
 }
+
+
+exports.runNode = async function (signer,nft,proxy) {
+
+    await nft.mint(signer.address, 1, {code:"", price: 0, tier: 0});
+    await proxy.connect(signer).delegate(await nft.tokenIndex(), signer.address)
+    await proxy.connect(signer).nodeEnter(signer.address)
+}

@@ -43,6 +43,8 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     mapping(uint32 => uint32) public globalDailyActiveNodes;
     mapping(address => mapping(uint32 => uint32)) public nodeDailyActive;
 
+    uint32 public constant CHOOSE_NODES_MAX = 200;
+
     function initialize(
         address carvToken_, address carvNft_, address vault_, uint256 chainID
     ) public initializer {
@@ -441,23 +443,18 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     }
 
     /*----------------------------------------- internal functions --------------------------------------------*/
-
-    // if number of active nodes is less than 10, choose all active nodes
-    // if number of active nodes is more than 10 and less than 100, choose 10 active nodes randomly
-    // if number of active node is more than 100, choose 1/10 of active nodes randomly
+    // if number of active nodes is less than ChHOOSE NODES_MAX(200), choose all active nodeS
+    // if number of active nodes is more than CHOOSE_NODES_MAX(200), choose CHOOSE_NODES_MAX(200) adctive nodes randomly
     function _vrfChooseNodes(uint256 randomWord) internal view returns (uint32[] memory) {
-        if (activeVrfNodeList.length <= 10) {
+
+        if (activeVrfNodeList.length <= CHOOSE_NODES_MAX) {
             return activeVrfNodeList;
         }
 
+        uint32[] memory chosenNodes = new uint32[](CHOOSE_NODES_MAX);
         uint32 curIndex = uint32(randomWord % activeVrfNodeList.length);
-        uint32 length = 10;
-        if (activeVrfNodeList.length > 100) {
-            length = uint32(activeVrfNodeList.length/10);
-        }
 
-        uint32[] memory chosenNodes = new uint32[](length);
-        for (uint32 i=0; i<length; i++) {
+        for (uint32 i=0; i< CHOOSE_NODES_MAX; i++) {
             chosenNodes[i] = activeVrfNodeList[curIndex];
             curIndex = (curIndex+1) % uint32(activeVrfNodeList.length);
         }
