@@ -14,6 +14,7 @@ import "./Adminable.sol";
 contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multicall {
 
     uint32 public constant MAX_UINT32 = 4294967295; // type(uint32).max;
+    uint32 public constant CHOOSE_NODES_MAX = 200;
 
     bytes32 public eip712DomainHash;
 
@@ -42,8 +43,6 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     mapping(address => mapping(bytes32 => bool)) public nodeClaimedTeeRewards;
     mapping(uint32 => uint32) public globalDailyActiveNodes;
     mapping(address => mapping(uint32 => uint32)) public nodeDailyActive;
-
-    uint32 public constant CHOOSE_NODES_MAX = 200;
 
     function initialize(
         address carvToken_, address carvNft_, address vault_, uint256 chainID
