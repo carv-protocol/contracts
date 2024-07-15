@@ -3,7 +3,8 @@ const hre = require("hardhat");
 const addrSepolia = "0xEe124EFd323ec2e5148583b39a799ec7Cf6CD897"
 
 const tokenAddrArbSepolia = "0x000000000000000000000000Ee124EFd323ec2e5148583b39a799ec7Cf6CD897"
-const tokenAddrSolana = "0x75428464dbd93d31698ce16b795ec23e7a1b7cc10dd76d64faefc743e53d3908"
+// OFT Config Address. Base64 -> Hex
+const tokenAddrSolana = "0xda7189104b5cf990fa5eddc23ec4b4007eeeb33796a5edf66207fedea74bcdfa"
 const eidArbSepolia = 40231
 const eidSolana = 40168
 
