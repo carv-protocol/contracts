@@ -99,13 +99,12 @@ describe("Gas", function () {
 
         let attestationID = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(attestation))
 
-        let signature0 = await signVerification(signers[10], 42161, attestationID, 0, 1)
-        let signature1 = await signVerification(signers[11], 42161, attestationID, 0, 2)
-        let signature2 = await signVerification(signers[12], 42161, attestationID, 0, 3)
-        let signature3 = await signVerification(signers[13], 42161, attestationID, 0, 4)
-        let signature4 = await signVerification(signers[14], 42161, attestationID, 0, 5)
-
-        let signature = await signVerification(signers[15], 42161, attestationID, 0, 6)
+        let signature0 = await signVerification(signers[1], 42161, attestationID, 0, 1)
+        let signature1 = await signVerification(signers[2], 42161, attestationID, 0, 2)
+        let signature2 = await signVerification(signers[3], 42161, attestationID, 0, 3)
+        let signature3 = await signVerification(signers[4], 42161, attestationID, 0, 4)
+        let signature4 = await signVerification(signers[5], 42161, attestationID, 0, 5)
+        let signature = await signVerification(signers[6], 42161, attestationID, 0, 6)
 
         await proxy.nodeReportVerificationBatch(
             attestationID,
@@ -113,7 +112,7 @@ describe("Gas", function () {
                 {
                     result: 0,
                     index: 6,
-                    signer: signers[15].address,
+                    signer: signers[6].address,
                     v: signature.v,
                     r: signature.r,
                     s: signature.s
@@ -127,7 +126,7 @@ describe("Gas", function () {
                 {
                     result: 0,
                     index: 1,
-                    signer: signers[10].address,
+                    signer: signers[1].address,
                     v: signature0.v,
                     r: signature0.r,
                     s: signature0.s
@@ -135,7 +134,7 @@ describe("Gas", function () {
                 {
                     result: 0,
                     index: 2,
-                    signer: signers[11].address,
+                    signer: signers[2].address,
                     v: signature1.v,
                     r: signature1.r,
                     s: signature1.s
@@ -143,7 +142,7 @@ describe("Gas", function () {
                 {
                     result: 0,
                     index: 3,
-                    signer: signers[12].address,
+                    signer: signers[3].address,
                     v: signature2.v,
                     r: signature2.r,
                     s: signature2.s
@@ -151,7 +150,7 @@ describe("Gas", function () {
                 {
                     result: 0,
                     index: 4,
-                    signer: signers[13].address,
+                    signer: signers[4].address,
                     v: signature3.v,
                     r: signature3.r,
                     s: signature3.s
@@ -159,7 +158,7 @@ describe("Gas", function () {
                 {
                     result: 0,
                     index: 5,
-                    signer: signers[14].address,
+                    signer: signers[5].address,
                     v: signature4.v,
                     r: signature4.r,
                     s: signature4.s

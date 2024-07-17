@@ -11,7 +11,7 @@ const settingAddr = "0x1aa70E340B0e76CeDA1247e1ef28E603BD4b5585"
 const vrfAddr = "0x26fcc204ec9A9289C9703a317B29B0A67a6Fa099"
 
 const serviceConfig = {
-    maxVrfActiveNodes: 2000,
+    maxVrfActiveNodes: 5000,
     nodeMinOnlineDuration: 21600, // 6 hours
     nodeVerifyDuration: 1800,  // 30 minutes
     nodeSlashReward: e18(10) ,  // 10 veCARV

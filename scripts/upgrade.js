@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 
-const proxyAddr = "0xd35AF24099f6BAd4690eD6E858273580e2b1954A";
-const newImplAddr = "0xf14D1BA8e14BB8C6Bfa4608488f0Ca80e6548Efb"
+const proxyAddr = "0xFFbB58c8370f99b2ae619328D6B99D77Fef190Cb";
+const newImplAddr = "0xd0c8F84032b03034957E14e77Affa07cCb41fddf"
 
 async function main() {
     const [deployer] = await hre.ethers.getSigners();

@@ -86,7 +86,7 @@ exports.signVerification = async function(signer, chainID, attestationID, result
 exports.deployToken = async function() {
     const [owner, alice, bob] = await ethers.getSigners();
 
-    const CarvToken = await ethers.getContractFactory("CarvToken");
+    const CarvToken = await ethers.getContractFactory("MockCarvToken");
     const veCarvToken = await ethers.getContractFactory("veCarvToken");
 
     const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
@@ -112,7 +112,7 @@ exports.deployNft = async function () {
 exports.deployVault = async function () {
     const [owner, service, alice] = await ethers.getSigners();
 
-    const CarvToken = await ethers.getContractFactory("CarvToken");
+    const CarvToken = await ethers.getContractFactory("MockCarvToken");
     const veCarvToken = await ethers.getContractFactory("veCarvToken");
     const Vault = await ethers.getContractFactory("Vault");
 
@@ -131,7 +131,7 @@ exports.deployAll = async function () {
 
     let signers = await ethers.getSigners();
 
-    const CarvToken = await ethers.getContractFactory("CarvToken");
+    const CarvToken = await ethers.getContractFactory("MockCarvToken");
     const veCarvToken = await ethers.getContractFactory("veCarvToken");
     const CarvNft = await ethers.getContractFactory("CarvNft");
     const Vault = await ethers.getContractFactory("Vault");
@@ -214,4 +214,12 @@ function e(x, d) {
 
 function e18(x) {
     return ethers.BigNumber.from("1000000000000000000").mul(x)
+}
+
+
+exports.runNode = async function (signer,nft,proxy) {
+
+    await nft.mint(signer.address, 1, {code:"", price: 0, tier: 0});
+    await proxy.connect(signer).delegate(await nft.tokenIndex(), signer.address)
+    await proxy.connect(signer).nodeEnter(signer.address)
 }
