@@ -33,6 +33,16 @@ module.exports = {
       url: process.env.API_KEY_URL_ARB_ONE,
       accounts: [process.env.ARB_NFT_PRIVATE_KEY],
       gasPrice: 15000000,
+    },
+    arb_oft: {
+      url: process.env.API_KEY_URL_ARB_ONE,
+      accounts: [process.env.OFT_PRIVATE_KEY],
+      gasPrice: 15000000,
+    },
+    eth_oft: {
+      url: process.env.API_KEY_URL_ETH_MAINNET,
+      accounts: [process.env.OFT_PRIVATE_KEY],
+      gasPrice: 15000000000,
     }
   }
 };

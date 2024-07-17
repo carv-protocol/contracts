@@ -1,6 +1,5 @@
 const {
     Keypair,
-    PublicKey,
     Transaction,
     sendAndConfirmTransaction,
 } = require('@solana/web3.js');
@@ -13,16 +12,16 @@ const {
 
 const {
     SecretKey,
-    TestNetConn,
+    MainNetConn,
     TokenPubKey
 } = require("./common")
 
 async function main() {
     let account = Keypair.fromSecretKey(SecretKey);
-    console.log(`🔑Owner public key is: ${account.publicKey.toBase58()}`,);
+    console.log(`🔑Owner public key is: ${account.publicKey.toBase58()}`);
 
     let ataAccount = await getOrCreateAssociatedTokenAccount(
-        TestNetConn,
+        MainNetConn,
         account,
         TokenPubKey,
         account.publicKey,
@@ -31,18 +30,19 @@ async function main() {
         {},
          TOKEN_PROGRAM_ID,
     )
+    console.log(`🔑Owner ata key is: ${ataAccount.address.toBase58()}`);
 
     let transaction = new Transaction().add(
         createMintToInstruction(
             TokenPubKey,
             ataAccount.address,
             account.publicKey,
-            100000000,
+            10000_000_000n,
             [],
             TOKEN_PROGRAM_ID
         )
     );
-    const signature = await sendAndConfirmTransaction(TestNetConn, transaction, [account]);
+    const signature = await sendAndConfirmTransaction(MainNetConn, transaction, [account]);
     console.log(`✅ Mint Complete! View the transaction here: ${signature}`);
 }
 

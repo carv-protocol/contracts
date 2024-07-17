@@ -5,10 +5,10 @@ const {
     sendAndConfirmTransaction,
 } = require('@solana/web3.js');
 
-const { OftTools, EXECUTOR_CONFIG_SEED, OFT_SEED, UlnProgram, OftProgram, SetConfigType } = require('@layerzerolabs/lz-solana-sdk-v2');
+const { OftTools, DVN_CONFIG_SEED, OFT_SEED, OftProgram, SetConfigType } = require('@layerzerolabs/lz-solana-sdk-v2');
 const {addressToBytes32, } = require('@layerzerolabs/lz-v2-utilities');
 
-const { SecretKey, TestNetConn, TokenPubKey } = require("./common")
+const { SecretKey, MainNetConn, TokenPubKey } = require("./common")
 
 async function main() {
     let account = Keypair.fromSecretKey(SecretKey);
@@ -21,8 +21,8 @@ async function main() {
     console.log(`🔑LayerZero DVN config is: ${lzDVNConfigAccount.toBase58()}`,);
 
     const peers = [
-        {dstEid: 40231, peerAddress: addressToBytes32('0xEe124EFd323ec2e5148583b39a799ec7Cf6CD897')},
-        // {dstEid: 40202, peerAddress: addressToBytes32('0x531DD61c620bD76aC6fA4f7217bc4654EdB3C353')},
+        {dstEid: 30101, peerAddress: addressToBytes32('0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47')},
+        {dstEid: 30110, peerAddress: addressToBytes32('0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47')},
     ];
 
     const [oftConfig] = PublicKey.findProgramAddressSync(
@@ -34,7 +34,7 @@ async function main() {
         // Set the Executor config for the pathway.
         const setExecutorConfigTransaction = new Transaction().add(
             await OftTools.createSetConfigIx(
-                TestNetConn,
+                MainNetConn,
                 account.publicKey,
                 oftConfig,
                 peer.dstEid,
@@ -47,7 +47,7 @@ async function main() {
         );
 
         const setExecutorConfigSignature = await sendAndConfirmTransaction(
-            TestNetConn,
+            MainNetConn,
             setExecutorConfigTransaction,
             [account],
         );
@@ -58,7 +58,7 @@ async function main() {
         // Set the Executor config for the pathway.
         const setSendUlnConfigTransaction = new Transaction().add(
             await OftTools.createSetConfigIx(
-                TestNetConn,
+                MainNetConn,
                 account.publicKey,
                 oftConfig,
                 peer.dstEid,
@@ -75,7 +75,7 @@ async function main() {
         );
 
         const setSendUlnConfigSignature = await sendAndConfirmTransaction(
-            TestNetConn,
+            MainNetConn,
             setSendUlnConfigTransaction,
             [account],
         );
@@ -86,13 +86,13 @@ async function main() {
         // Set the Executor config for the pathway.
         const setReceiveUlnConfigTransaction = new Transaction().add(
             await OftTools.createSetConfigIx(
-                TestNetConn,
+                MainNetConn,
                 account.publicKey,
                 oftConfig,
                 peer.dstEid,
                 SetConfigType.RECEIVE_ULN,
                 {
-                    confirmations: 1, // should be consistent with the target chain
+                    confirmations: 10, // should be consistent with the target chain
                     requiredDvnCount: 1,
                     optionalDvnCount: 0,
                     optionalDvnThreshold: 0,
@@ -103,7 +103,7 @@ async function main() {
         );
 
         const setReceiveUlnConfigSignature = await sendAndConfirmTransaction(
-            TestNetConn,
+            MainNetConn,
             setReceiveUlnConfigTransaction,
             [account],
         );

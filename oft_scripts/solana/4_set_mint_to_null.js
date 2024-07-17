@@ -6,7 +6,7 @@ const {
 } = require('@solana/web3.js');
 
 const {OftTools ,OftProgram, OFT_SEED} = require('@layerzerolabs/lz-solana-sdk-v2');
-const {TestNetConn, SecretKey, TokenPubKey} = require('./common')
+const {MainNetConn, SecretKey, TokenPubKey} = require('./common')
 
 async function main() {
     let account = Keypair.fromSecretKey(SecretKey);
@@ -25,7 +25,7 @@ async function main() {
         ),
     );
 
-    let sig = await sendAndConfirmTransaction(TestNetConn, transaction, [account]);
+    let sig = await sendAndConfirmTransaction(MainNetConn, transaction, [account]);
     console.log(`✅ OFT set mint to null Complete! View the transaction here: ${sig}`);
 }
 

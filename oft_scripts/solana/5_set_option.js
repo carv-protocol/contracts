@@ -8,7 +8,7 @@ const {
 const {OftTools, OFT_SEED, OftProgram} = require('@layerzerolabs/lz-solana-sdk-v2');
 const {addressToBytes32, Options } = require('@layerzerolabs/lz-v2-utilities');
 
-const {SecretKey, TestNetConn, TokenPubKey} = require("./common")
+const {SecretKey, MainNetConn, TokenPubKey} = require("./common")
 
 async function main() {
     let account = Keypair.fromSecretKey(SecretKey);
@@ -16,8 +16,8 @@ async function main() {
     console.log(`🔑Token public key is: ${TokenPubKey.toBase58()}`);
 
     const peers = [
-        {dstEid: 40231, peerAddress: addressToBytes32('0xEe124EFd323ec2e5148583b39a799ec7Cf6CD897')},
-        // {dstEid: 40202, peerAddress: addressToBytes32('0x531DD61c620bD76aC6fA4f7217bc4654EdB3C353')},
+        {dstEid: 30101, peerAddress: addressToBytes32('0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47')},
+        {dstEid: 30110, peerAddress: addressToBytes32('0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47')},
     ];
 
     const [oftConfig] = PublicKey.findProgramAddressSync(
@@ -50,7 +50,7 @@ async function main() {
             )
         );
 
-        const sig = await sendAndConfirmTransaction(TestNetConn, optionTransaction, [account]);
+        const sig = await sendAndConfirmTransaction(MainNetConn, optionTransaction, [account]);
         console.log(`✅ You set options for dstEid ${peer.dstEid}! View the transaction here: ${sig}`);
     }
 }

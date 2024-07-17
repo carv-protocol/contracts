@@ -9,20 +9,17 @@ const {getOrCreateAssociatedTokenAccount, TOKEN_PROGRAM_ID} = require("@solana/s
 const {OftTools} = require('@layerzerolabs/lz-solana-sdk-v2');
 const {addressToBytes32, Options } = require('@layerzerolabs/lz-v2-utilities');
 
-const {SecretKey, TestNetConn, TokenPubKey} = require("./common.js")
+const {SecretKey, MainNetConn, TokenPubKey} = require("./common.js")
 
 async function main() {
     let account = Keypair.fromSecretKey(SecretKey);
     console.log(`🔑Owner public key is: ${account.publicKey.toBase58()}`,);
     console.log(`🔑Token public key is: ${TokenPubKey.toBase58()}`,);
 
-    const peer = {
-        dstEid: 40231,
-        peerAddress: addressToBytes32('0xEe124EFd323ec2e5148583b39a799ec7Cf6CD897'),
-    };
+    const peer = {dstEid: 30101, peerAddress: addressToBytes32('0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47')};
 
     let ataAccount = await getOrCreateAssociatedTokenAccount(
-        TestNetConn,
+        MainNetConn,
         account,
         TokenPubKey,
         account.publicKey,
@@ -32,12 +29,12 @@ async function main() {
         TOKEN_PROGRAM_ID,
     )
 
-    const receiver = addressToBytes32('0xAdB2b5B7bA93ABEE50cB4A7a063d826233137B65');
+    const receiver = addressToBytes32('0xCfce99eE8630fe51974c9a94f1d9153e9F656E81');
     // 10 CARV
     const amountToSend = 10_000_000n;
 
     const fee = await OftTools.quoteWithUln(
-        TestNetConn,
+        MainNetConn,
         account.publicKey,
         TokenPubKey,
         peer.dstEid,
@@ -50,7 +47,7 @@ async function main() {
 
     const sendTransaction = new Transaction().add(
         await OftTools.sendWithUln(
-            TestNetConn,
+            MainNetConn,
             account.publicKey,
             TokenPubKey,
             ataAccount.address,
@@ -64,7 +61,7 @@ async function main() {
         ),
     ).add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }));
 
-    const sig = await sendAndConfirmTransaction(TestNetConn, sendTransaction, [account]);
+    const sig = await sendAndConfirmTransaction(MainNetConn, sendTransaction, [account]);
     console.log(
         `✅ You sent ${amountToSend} to dstEid ${peer.dstEid}! View the transaction here: ${sig}`,
     );

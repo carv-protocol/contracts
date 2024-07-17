@@ -5,10 +5,10 @@ async function main() {
 
     const CarvToken = await hre.ethers.getContractFactory("CarvToken");
     let token = await CarvToken.deploy(
-        "",
-        "",
-        "0x6EDCE65403992e310A62460808c4b910D972f10f",
-        "1000000000000000000000000000000000"
+        "T",
+        "T",
+        "0x1a44076050125825900e736c501f859c50fE728c",
+        e18("1000000000")
     );
     await token.deployed()
 
@@ -16,6 +16,10 @@ async function main() {
         "token: ", token.address, "\n",
         "deployer: ", deployer.address
     )
+}
+
+function e18(x) {
+    return hre.ethers.BigNumber.from("1000000000000000000").mul(x)
 }
 
 main().catch((error) => {

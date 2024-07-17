@@ -11,7 +11,7 @@ const {
     getMintLen,
 } = require('@solana/spl-token');
 
-const {TestNetConn, SecretKey} = require('./common')
+const {MainNetConn, SecretKey} = require('./common')
 
 async function main() {
     let account = Keypair.fromSecretKey(SecretKey);
@@ -22,7 +22,7 @@ async function main() {
 
     const OFT_DECIMALS = 6;
 
-    const minimumBalanceForMint = await TestNetConn.getMinimumBalanceForRentExemption(getMintLen([]));
+    const minimumBalanceForMint = await MainNetConn.getMinimumBalanceForRentExemption(getMintLen([]));
     let transaction = new Transaction().add(
         SystemProgram.createAccount({
             fromPubkey: account.publicKey,
@@ -39,7 +39,7 @@ async function main() {
             TOKEN_PROGRAM_ID,
         ),
     );
-    let sig = await sendAndConfirmTransaction(TestNetConn, transaction, [account, mintKp]);
+    let sig = await sendAndConfirmTransaction(MainNetConn, transaction, [account, mintKp]);
     console.log("create token account & initialize mint OK: ", sig)
 }
 
