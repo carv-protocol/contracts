@@ -78,7 +78,7 @@ async function main() {
         },
         )
     );
-    const signature = await sendAndConfirmTransaction(TestNetConn, createMetadataTransaction, [account]);
+    const signature = await sendAndConfirmTransaction(MainNetConn, createMetadataTransaction, [account]);
     console.log(`✅ Create metadata Complete! View the transaction here: ${signature}`);
 }
 
