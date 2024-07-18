@@ -33,7 +33,7 @@ async function main() {
             lamports: minimumBalanceForMint,
             programId: TOKEN_PROGRAM_ID,
         }),
-        await createInitializeMintInstruction(
+        createInitializeMintInstruction(
             mintKp.publicKey,
             OFT_DECIMALS,
             account.publicKey,
