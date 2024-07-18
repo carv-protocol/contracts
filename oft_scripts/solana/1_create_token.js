@@ -3,6 +3,7 @@ const {
     Transaction,
     sendAndConfirmTransaction,
     SystemProgram,
+    PublicKey
 } = require('@solana/web3.js');
 
 const {
@@ -12,6 +13,7 @@ const {
 } = require('@solana/spl-token');
 
 const {MainNetConn, SecretKey} = require('./common')
+const { createCreateMetadataAccountV3Instruction, PROGRAM_ID } = require('@metaplex-foundation/mpl-token-metadata');
 
 async function main() {
     let account = Keypair.fromSecretKey(SecretKey);
@@ -23,7 +25,7 @@ async function main() {
     const OFT_DECIMALS = 6;
 
     const minimumBalanceForMint = await MainNetConn.getMinimumBalanceForRentExemption(getMintLen([]));
-    let transaction = new Transaction().add(
+    let createTokenTransaction = new Transaction().add(
         SystemProgram.createAccount({
             fromPubkey: account.publicKey,
             newAccountPubkey: mintKp.publicKey,
@@ -39,8 +41,45 @@ async function main() {
             TOKEN_PROGRAM_ID,
         ),
     );
-    let sig = await sendAndConfirmTransaction(MainNetConn, transaction, [account, mintKp]);
+
+    let sig = await sendAndConfirmTransaction(MainNetConn, createTokenTransaction, [account, mintKp]);
     console.log("create token account & initialize mint OK: ", sig)
+
+    let createMetadataTransaction = new Transaction().add(
+        createCreateMetadataAccountV3Instruction(
+            {
+              metadata: PublicKey.findProgramAddressSync(
+                [
+                  Buffer.from("metadata"),
+                  PROGRAM_ID.toBuffer(),
+                  mintKp.publicKey.toBuffer(),
+                ],
+                PROGRAM_ID,
+              )[0],
+              mint: mintKp.publicKey,
+              mintAuthority: account.publicKey,
+              payer: account.publicKey,
+              updateAuthority: account.publicKey,
+            },
+            {
+                createMetadataAccountArgsV3: {
+                data: {
+                  name: 'CARV',
+                  symbol: 'CARV',
+                  uri: 'https://raw.githubusercontent.com/carv-protocol/carv-contracts-alphanet/main/oft_scripts/solana/metadata/metadata.json',
+                  creators: null,
+                  sellerFeeBasisPoints: 0,
+                  uses: null,
+                  collection: null,
+                },
+                isMutable: false,
+                collectionDetails: null,
+            },
+        },
+        )
+    );
+    const signature = await sendAndConfirmTransaction(TestNetConn, createMetadataTransaction, [account]);
+    console.log(`✅ Create metadata Complete! View the transaction here: ${signature}`);
 }
 
 main().then(r => {})

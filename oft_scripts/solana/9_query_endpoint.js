@@ -16,7 +16,7 @@ async function main() {
 
     const lzDVNProgramId = new PublicKey('HtEYV4xB4wvsj5fgTkcfuChYpvGYzgzwvNhgDZQNh7wW');
     const lzDVNConfigAccount = PublicKey.findProgramAddressSync([Buffer.from(DVN_CONFIG_SEED, 'utf8')], lzDVNProgramId)[0];
-    console.log(`🔑lzDVNConfig public key is: ${lzDVNConfigAccount}`,);
+    console.log(`LayerZero DVN config account is: ${lzDVNConfigAccount}`);
 
     const peers = [
         {dstEid: 30101, peerAddress: addressToBytes32('0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47')},
