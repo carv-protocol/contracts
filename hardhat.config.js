@@ -42,7 +42,7 @@ module.exports = {
     eth_oft: {
       url: process.env.API_KEY_URL_ETH_MAINNET,
       accounts: [process.env.OFT_PRIVATE_KEY],
-      gasPrice: 15000000000,
+      gasPrice: 12000000000,
     }
   }
 };

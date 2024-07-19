@@ -15,8 +15,8 @@ async function main() {
     console.log(`🔑Owner public key is: ${account.publicKey.toBase58()}`,);
 
     const peers = [
-        {dstEid: 30101, peerAddress: addressToBytes32('0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47')},
-        {dstEid: 30110, peerAddress: addressToBytes32('0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47')},
+        {dstEid: 30101, peerAddress: addressToBytes32('0xc08Cd26474722cE93F4D0c34D16201461c10AA8C')},
+        {dstEid: 30110, peerAddress: addressToBytes32('0xc08Cd26474722cE93F4D0c34D16201461c10AA8C')},
     ];
 
     const [oftConfig] = PublicKey.findProgramAddressSync(

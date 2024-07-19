@@ -1,11 +1,12 @@
 const hre = require("hardhat");
 require("dotenv").config();
 
-const oappAddress = '0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47';
+const oappAddress = '0xc08Cd26474722cE93F4D0c34D16201461c10AA8C';
 const sendLibAddress = '0xbB2Ea70C9E858123480642Cf96acbcCE1372dCe1';
 const receiveLibAddress = '0xc02Ab410f0734EFa3F14628780e6e695156024C2'
 const endpointAddress = '0x1a44076050125825900e736c501f859c50fE728c'
-const DVNAddress = '0x589dEDbD617e0CBcB916A9223F4d1300c294236b'
+const lzDVNAddress = '0x589dEDbD617e0CBcB916A9223F4d1300c294236b'
+const nmDVNAddress = '0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5'
 const executorAddress = '0x173272739Bd7Aa6e4e214714048a9fE699453059'
 
 const SolanaEid = 30168
@@ -19,7 +20,7 @@ async function main() {
     const endpointContract = new hre.ethers.Contract(endpointAddress, ENDPOINT_ABI, signer);
 
     const setConfigParamExecutor = {
-        eid: SolanaEid,
+        eid: ArbitrumEid,
         configType: 1,
         config: abiCoder.encode(
             ["tuple(uint32 maxMessageSize,address executor)"],
@@ -30,16 +31,16 @@ async function main() {
     }
 
     const setConfigParamUln = {
-        eid: SolanaEid,
+        eid: ArbitrumEid,
         configType: 2,
         config: abiCoder.encode(
             ["tuple(uint64 confirmations,uint8 requiredDVNCount,uint8 optionalDVNCount,uint8 optionalDVNThreshold,address[] requiredDVNs,address[] optionalDVNs)"],
             [{
                 confirmations: 10,
-                requiredDVNCount: 1,
+                requiredDVNCount: 2,
                 optionalDVNCount: 0,
                 optionalDVNThreshold: 0,
-                requiredDVNs: [DVNAddress],
+                requiredDVNs: [lzDVNAddress, nmDVNAddress],
                 optionalDVNs: [],
             }]
         )

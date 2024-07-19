@@ -16,7 +16,7 @@ async function main() {
     console.log(`🔑Owner public key is: ${account.publicKey.toBase58()}`,);
     console.log(`🔑Token public key is: ${TokenPubKey.toBase58()}`,);
 
-    const peer = {dstEid: 30101, peerAddress: addressToBytes32('0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47')};
+    const peer = {dstEid: 30101, peerAddress: addressToBytes32('0xc08Cd26474722cE93F4D0c34D16201461c10AA8C')};
 
     let ataAccount = await getOrCreateAssociatedTokenAccount(
         MainNetConn,
@@ -29,7 +29,7 @@ async function main() {
         TOKEN_PROGRAM_ID,
     )
 
-    const receiver = addressToBytes32('0xCfce99eE8630fe51974c9a94f1d9153e9F656E81');
+    const receiver = addressToBytes32('');
     // 10 CARV
     const amountToSend = 10_000_000n;
 

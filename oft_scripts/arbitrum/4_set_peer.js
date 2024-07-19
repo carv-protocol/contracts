@@ -1,9 +1,9 @@
 const hre = require("hardhat");
 
-const tokenAddr = "0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47"
+const tokenAddr = "0xc08Cd26474722cE93F4D0c34D16201461c10AA8C"
 // OFT Config Address. Base64 -> Hex
-const tokenAddrSolana = "0xf36bc1b5412b7af8c5337f7bfa14a8fdcd25adf7b84a09272181af00f375e099"
-const tokenAddrEthereum = "0x000000000000000000000000d6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47"
+const tokenAddrSolana = "0x95d3706d9bc887a447589f3ec4cf9ee2419fd8f11377bad400515d374ba42a6f"
+const tokenAddrEthereum = "0x000000000000000000000000c08Cd26474722cE93F4D0c34D16201461c10AA8C"
 
 const SolanaEid = 30168
 const EthereumEid = 30101
@@ -16,11 +16,11 @@ async function main() {
 
     let tx
 
-    tx = await token.setPeer(SolanaEid, tokenAddrSolana)
+    tx = await token.setPeer(EthereumEid, tokenAddrEthereum)
     await tx.wait()
 
     tx = await token.setEnforcedOptions([{
-        eid: SolanaEid,
+        eid: EthereumEid,
         msgType: 1,
         options: "0x00030100210100000000000000000000000000030d40000000000000000000000000002625a0",
     }])
