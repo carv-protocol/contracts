@@ -8,6 +8,10 @@ typechain-types
 local_scripts
 testnet_scripts
 
+contracts/test
+
+local_test
+
 #Hardhat files
 cache
 artifacts
