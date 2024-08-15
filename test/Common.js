@@ -95,6 +95,18 @@ exports.deployToken = async function() {
     return { carv, veCarv, owner, alice, bob };
 }
 
+exports.deployToken2 = async function() {
+    const [owner, alice, bob] = await ethers.getSigners();
+
+    const CarvToken = await ethers.getContractFactory("MockCarvToken");
+    const veCarvTokens = await ethers.getContractFactory("veCarvs");
+
+    const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
+    const veCarvs = await veCarvTokens.deploy("veCARV(s)", "veCARV(s)", carv.address);
+
+    return { carv, veCarvs, owner, alice, bob };
+}
+
 exports.deploySettings = async function deploySettings() {
     const [owner] = await ethers.getSigners();
     const Settings = await ethers.getContractFactory("Settings");

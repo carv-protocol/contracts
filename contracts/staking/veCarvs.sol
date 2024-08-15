@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract veCarvs is Multicall {
     struct Position {
         address user;
-        bool withdrawn;
         uint256 balance;
         uint256 end;
     }
@@ -38,6 +37,7 @@ contract veCarvs is Multicall {
     mapping(uint32 => int256) public slopeChanges;
     // epoch -> point
     EpochPoint[] public epochPoints;
+
     /*---------- User algorithm parameters ----------*/
     mapping(address => mapping(uint32 => int256)) public userSlopeChanges;
     mapping(address => EpochPoint[]) public userEpochPoints;
@@ -59,13 +59,7 @@ contract veCarvs is Multicall {
     }
 
     function balanceOfAt(address user, uint256 timestamp) public view returns (uint256) {
-        EpochPoint memory lastRecordEpochPoint = userEpochPoints[user][userEpochPoints[user].length-1];
-        require(lastRecordEpochPoint.epochIndex <= epochAt(timestamp), "invalid timestamp");
-        uint256 duration = timestamp - epochTimestamp(lastRecordEpochPoint.epochIndex);
-        if (lastRecordEpochPoint.bias < uint256(lastRecordEpochPoint.slope) * (duration)) {
-            return 0;
-        }
-        return (lastRecordEpochPoint.bias - uint256(lastRecordEpochPoint.slope) * (duration));
+        return _biasAt(userEpochPoints[user], userSlopeChanges[user], timestamp);
     }
 
     function totalSupply() external view returns (uint256) {
@@ -73,13 +67,7 @@ contract veCarvs is Multicall {
     }
 
     function totalSupplyAt(uint256 timestamp) public view returns (uint256) {
-        EpochPoint memory lastRecordEpochPoint = epochPoints[epochPoints.length-1];
-        require(lastRecordEpochPoint.epochIndex <= epochAt(timestamp), "invalid timestamp");
-        uint256 duration = timestamp - epochTimestamp(lastRecordEpochPoint.epochIndex);
-        if (lastRecordEpochPoint.bias < uint256(lastRecordEpochPoint.slope) * (duration)) {
-            return 0;
-        }
-        return (lastRecordEpochPoint.bias - uint256(lastRecordEpochPoint.slope) * (duration));
+        return _biasAt(epochPoints, slopeChanges, timestamp);
     }
 
     function epoch() public view returns (uint32) {
@@ -101,11 +89,10 @@ contract veCarvs is Multicall {
 
         uint256 beginTimestamp = (block.timestamp / DURATION_PER_EPOCH) * DURATION_PER_EPOCH;
         positionIndex++;
-        positions[positionIndex] = Position(msg.sender, false, amount, beginTimestamp + duration);
+        positions[positionIndex] = Position(msg.sender, amount, beginTimestamp + duration);
 
-        checkEpoch();
-        checkUserEpoch(msg.sender);
-        _update(msg.sender, amount, beginTimestamp, duration);
+        checkEpoch(msg.sender);
+        _updateCurrentPoint(msg.sender, amount, beginTimestamp, duration);
 
         emit Deposit(positionIndex, msg.sender, amount, beginTimestamp, duration);
     }
@@ -113,18 +100,52 @@ contract veCarvs is Multicall {
     function withdraw(uint64 positionID) external {
         Position storage position = positions[positionID];
 
-        require(position.user == msg.sender, "user not match");
-        require(!position.withdrawn, "already withdrawn");
+        require(position.user == msg.sender, "user not match or already withdrawn");
         require(position.end <= block.timestamp, "locked");
 
         IERC20(token).transfer(msg.sender, position.balance);
-        position.withdrawn = true;
+        delete positions[positionID];
         emit Withdraw(positionID);
     }
 
-    function checkEpoch() public {
+    function checkEpoch(address withUser) public {
+        _checkEpoch(epochPoints, slopeChanges);
+
+        if (withUser != address(0)) {
+            if (userEpochPoints[withUser].length == 0) {
+                // initialize user array
+                userEpochPoints[withUser].push(EpochPoint(0, 0, epoch()));
+                return;
+            }
+            _checkEpoch(userEpochPoints[withUser], userSlopeChanges[withUser]);
+        }
+    }
+
+    function _biasAt(EpochPoint[] memory epochPoints_, mapping(uint32 => int256) storage slopeChanges_, uint256 timestamp) internal view returns (uint256) {
+        EpochPoint memory lastRecordEpochPoint = epochPoints_[epochPoints_.length-1];
+        uint32 targetEpoch = epochAt(timestamp);
+
+        if (targetEpoch < lastRecordEpochPoint.epochIndex) {
+            for (uint256 epochPointsIndex = epochPoints_.length-2; ; epochPointsIndex--) {
+                EpochPoint memory epochPoint = epochPoints_[epochPointsIndex];
+                if (targetEpoch >= epochPoint.epochIndex) {
+                    return calculate(epochPoint.bias, epochPoint.slope, timestamp - epochTimestamp(epochPoint.epochIndex));
+                }
+            }
+        }
+
+        uint256 tmpBias = lastRecordEpochPoint.bias;
+        int256 tmpSlope = lastRecordEpochPoint.slope;
+        for (uint32 epochIndex = lastRecordEpochPoint.epochIndex; epochIndex < targetEpoch; epochIndex++) {
+            tmpBias = calculate(tmpBias, tmpSlope, DURATION_PER_EPOCH);
+            tmpSlope += slopeChanges_[epochIndex+1];
+        }
+        return calculate(tmpBias, tmpSlope, timestamp - epochTimestamp(targetEpoch));
+    }
+
+    function _checkEpoch(EpochPoint[] storage epochPoints_, mapping(uint32 => int256) storage slopeChanges_) internal {
         uint32 currentEpoch = epoch();
-        uint32 lastRecordEpoch = epochPoints[epochPoints.length-1].epochIndex;
+        uint32 lastRecordEpoch = epochPoints_[epochPoints_.length-1].epochIndex;
 
         if (currentEpoch <= lastRecordEpoch) {
             return;
@@ -133,61 +154,39 @@ contract veCarvs is Multicall {
         // From the epoch of the previous Point to the current epoch
         for (uint32 epochIndex = lastRecordEpoch+1; epochIndex <= currentEpoch; epochIndex++) {
             // EpochPoints will be updated only when the slope changes or reaches the current epoch.
-            if (slopeChanges[epochIndex] == 0 && epochIndex < currentEpoch) {
+            if (slopeChanges_[epochIndex] == 0 && epochIndex < currentEpoch) {
                 continue;
             }
 
-            EpochPoint memory lastEpochPoint = epochPoints[epochPoints.length-1];
-            EpochPoint memory epochPoint;
-
-            epochPoint.slope = lastEpochPoint.slope + slopeChanges[epochIndex];
-            epochPoint.bias = lastEpochPoint.bias - (uint256(lastEpochPoint.slope) * (epochIndex - lastEpochPoint.epochIndex) * DURATION_PER_EPOCH);
-            epochPoint.epochIndex = epochIndex;
-            epochPoints.push(epochPoint);
-        }
-    }
-
-    function checkUserEpoch(address user) public {
-        uint32 currentEpoch = epoch();
-        if (userEpochPoints[user].length == 0) {
-            // initialize user array
-            userEpochPoints[user].push(EpochPoint(0, 0, currentEpoch));
-            return;
-        }
-
-        uint32 lastRecordEpoch = userEpochPoints[user][userEpochPoints[user].length-1].epochIndex;
-        if (currentEpoch <= lastRecordEpoch) {
-            return;
-        }
-
-        for (uint32 epochIndex = lastRecordEpoch+1; epochIndex <= currentEpoch; epochIndex++) {
-            if (userSlopeChanges[user][epochIndex] == 0 && epochIndex < currentEpoch) {
-                continue;
-            }
-
-            EpochPoint memory lastEpochPoint = userEpochPoints[user][userEpochPoints[user].length-1];
-            EpochPoint memory epochPoint;
-
-            epochPoint.slope = lastEpochPoint.slope + userSlopeChanges[user][epochIndex];
-            epochPoint.bias = lastEpochPoint.bias - (uint256(lastEpochPoint.slope) * (epochIndex - lastEpochPoint.epochIndex) * DURATION_PER_EPOCH);
-            epochPoint.epochIndex = epochIndex;
-            userEpochPoints[user].push(epochPoint);
+            EpochPoint memory lastEpochPoint = epochPoints_[epochPoints_.length-1];
+            EpochPoint memory newEpochPoint;
+            newEpochPoint.slope = lastEpochPoint.slope + slopeChanges_[epochIndex];
+            newEpochPoint.bias = calculate(lastEpochPoint.bias, lastEpochPoint.slope, (epochIndex - lastEpochPoint.epochIndex) * DURATION_PER_EPOCH);
+            newEpochPoint.epochIndex = epochIndex;
+            epochPoints_.push(newEpochPoint);
         }
     }
 
     // update slope and bias
-    function _update(address user, uint256 amount, uint256 beginTimestamp, uint256 duration) internal {
+    function _updateCurrentPoint(address user, uint256 amount, uint256 beginTimestamp, uint256 duration) internal {
         uint256 initialBias = amount * duration / (stakingFactor * DURATION_PER_EPOCH);
-        uint256 slope = initialBias / duration;
-
+        uint256 slope = initialBias / duration + 1;
         uint32 endEpoch = epochAt(beginTimestamp + duration);
 
+        // update global slope and bias
         slopeChanges[endEpoch] -= int256(slope);
         epochPoints[epochPoints.length-1].slope += int256(slope);
         epochPoints[epochPoints.length-1].bias += initialBias;
-
+        // update user's slope and bias
         userSlopeChanges[user][endEpoch] -= int256(slope);
         userEpochPoints[user][userEpochPoints[user].length-1].slope += int256(slope);
         userEpochPoints[user][userEpochPoints[user].length-1].bias += initialBias;
+    }
+
+    function calculate(uint256 bias, int256 slope, uint256 duration) internal pure returns (uint256) {
+        if (bias < uint256(slope) * (duration)) {
+            return 0;
+        }
+        return (bias - uint256(slope) * (duration));
     }
 }
