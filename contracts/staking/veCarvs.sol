@@ -54,6 +54,10 @@ contract veCarvs is Multicall {
         epochPoints.push(EpochPoint(0, 0, 0));
     }
 
+    function decimals() public pure returns (uint8) {
+        return 18;
+    }
+
     function balanceOf(address user) external view returns (uint256) {
         return balanceOfAt(user, block.timestamp);
     }
