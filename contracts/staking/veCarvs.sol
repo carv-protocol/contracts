@@ -9,6 +9,8 @@ contract veCarvs is Multicall {
         address user;
         uint256 balance;
         uint256 end;
+        uint256 share;
+        uint256 debt;
     }
 
     struct EpochPoint {
@@ -18,13 +20,23 @@ contract veCarvs is Multicall {
     }
 
     /*---------- event ----------*/
-    event Deposit(uint64 indexed positionID, address indexed user, uint256 amount, uint256 begin, uint256 duration);
+    event Deposit(uint64 indexed positionID, address indexed user, uint256 amount,
+        uint256 begin, uint256 duration, uint256 share, uint256 debt);
     event Withdraw(uint64 indexed positionID);
 
     /*---------- token infos ----------*/
     address public token;
     string public name;
     string public symbol;
+
+    /*---------- Global reward parameters ----------*/
+    uint256 public constant REWARD_PER_SECOND = 1e16; // 0.01 CARV Token
+    uint256 public constant REWARD_FACTOR = 90 days;
+    uint256 public constant PRECISION_FACTOR = 1e18;
+    uint256 public accumulatedRewardPerShare;
+    uint256 public totalShare;
+    uint256 public lastRewardTimestamp;
+    uint256 public rewardTokenAmount;
 
     /*---------- Global algorithm parameters ----------*/
     // The contract will define the length of min time period here.
@@ -86,30 +98,61 @@ contract veCarvs is Multicall {
         return epochIndex * DURATION_PER_EPOCH + initialTimestamp;
     }
 
+    function depositRewardToken(uint256 amount) external {
+        require(amount > 0, "invalid amount");
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        rewardTokenAmount += amount;
+    }
+
     function deposit(uint256 amount, uint256 duration) external {
         require(duration % DURATION_PER_EPOCH == 0, "invalid duration");
         require(amount > 0, "invalid amount");
         IERC20(token).transferFrom(msg.sender, address(this), amount);
 
+        _updateShare();
+
         uint256 beginTimestamp = (block.timestamp / DURATION_PER_EPOCH) * DURATION_PER_EPOCH;
+        uint256 share = amount * duration / REWARD_FACTOR;
+        uint256 debt = (share * accumulatedRewardPerShare) / PRECISION_FACTOR;
+
         positionIndex++;
-        positions[positionIndex] = Position(msg.sender, amount, beginTimestamp + duration);
+        positions[positionIndex] = Position(msg.sender, amount, beginTimestamp + duration, share, debt);
+        totalShare += share;
 
         checkEpoch(msg.sender);
         _updateCurrentPoint(msg.sender, amount, beginTimestamp, duration);
 
-        emit Deposit(positionIndex, msg.sender, amount, beginTimestamp, duration);
+        emit Deposit(positionIndex, msg.sender, amount, beginTimestamp, duration, share, debt);
     }
 
     function withdraw(uint64 positionID) external {
         Position storage position = positions[positionID];
-
         require(position.user == msg.sender, "user not match or already withdrawn");
         require(position.end <= block.timestamp, "locked");
 
-        IERC20(token).transfer(msg.sender, position.balance);
+        _updateShare();
+
+        uint256 pendingReward = (position.share * accumulatedRewardPerShare) / PRECISION_FACTOR - position.debt;
+
+        IERC20(token).transfer(msg.sender, position.balance+pendingReward);
+        rewardTokenAmount -= pendingReward;
+        totalShare -= position.share;
         delete positions[positionID];
         emit Withdraw(positionID);
+    }
+
+    function claim(uint64 positionID) external {
+        Position storage position = positions[positionID];
+        require(position.user == msg.sender, "user not match or already withdrawn");
+
+        _updateShare();
+
+        uint256 pendingReward = (position.share * accumulatedRewardPerShare) / PRECISION_FACTOR - position.debt;
+        if (pendingReward > 0) {
+            IERC20(token).transfer(msg.sender, pendingReward);
+            rewardTokenAmount -= pendingReward;
+            position.debt = (position.share * accumulatedRewardPerShare) / PRECISION_FACTOR;
+        }
     }
 
     function checkEpoch(address withUser) public {
@@ -125,6 +168,21 @@ contract veCarvs is Multicall {
         }
     }
 
+    function _updateShare() internal {
+        if (block.timestamp <= lastRewardTimestamp) {
+            return;
+        }
+
+        if (totalShare == 0) {
+            lastRewardTimestamp = block.timestamp;
+            return;
+        }
+
+        uint256 newReward = (block.timestamp - lastRewardTimestamp) * REWARD_PER_SECOND;
+        accumulatedRewardPerShare += (newReward * PRECISION_FACTOR) / totalShare;
+        lastRewardTimestamp = block.timestamp;
+    }
+
     function _biasAt(EpochPoint[] memory epochPoints_, mapping(uint32 => int256) storage slopeChanges_, uint256 timestamp) internal view returns (uint256) {
         EpochPoint memory lastRecordEpochPoint = epochPoints_[epochPoints_.length-1];
         uint32 targetEpoch = epochAt(timestamp);
@@ -133,7 +191,7 @@ contract veCarvs is Multicall {
             for (uint256 epochPointsIndex = epochPoints_.length-2; ; epochPointsIndex--) {
                 EpochPoint memory epochPoint = epochPoints_[epochPointsIndex];
                 if (targetEpoch >= epochPoint.epochIndex) {
-                    return calculate(epochPoint.bias, epochPoint.slope, timestamp - epochTimestamp(epochPoint.epochIndex));
+                    return _calculate(epochPoint.bias, epochPoint.slope, timestamp - epochTimestamp(epochPoint.epochIndex));
                 }
             }
         }
@@ -141,10 +199,10 @@ contract veCarvs is Multicall {
         uint256 tmpBias = lastRecordEpochPoint.bias;
         int256 tmpSlope = lastRecordEpochPoint.slope;
         for (uint32 epochIndex = lastRecordEpochPoint.epochIndex; epochIndex < targetEpoch; epochIndex++) {
-            tmpBias = calculate(tmpBias, tmpSlope, DURATION_PER_EPOCH);
+            tmpBias = _calculate(tmpBias, tmpSlope, DURATION_PER_EPOCH);
             tmpSlope += slopeChanges_[epochIndex+1];
         }
-        return calculate(tmpBias, tmpSlope, timestamp - epochTimestamp(targetEpoch));
+        return _calculate(tmpBias, tmpSlope, timestamp - epochTimestamp(targetEpoch));
     }
 
     function _checkEpoch(EpochPoint[] storage epochPoints_, mapping(uint32 => int256) storage slopeChanges_) internal {
@@ -165,7 +223,7 @@ contract veCarvs is Multicall {
             EpochPoint memory lastEpochPoint = epochPoints_[epochPoints_.length-1];
             EpochPoint memory newEpochPoint;
             newEpochPoint.slope = lastEpochPoint.slope + slopeChanges_[epochIndex];
-            newEpochPoint.bias = calculate(lastEpochPoint.bias, lastEpochPoint.slope, (epochIndex - lastEpochPoint.epochIndex) * DURATION_PER_EPOCH);
+            newEpochPoint.bias = _calculate(lastEpochPoint.bias, lastEpochPoint.slope, (epochIndex - lastEpochPoint.epochIndex) * DURATION_PER_EPOCH);
             newEpochPoint.epochIndex = epochIndex;
             epochPoints_.push(newEpochPoint);
         }
@@ -187,7 +245,7 @@ contract veCarvs is Multicall {
         userEpochPoints[user][userEpochPoints[user].length-1].bias += initialBias;
     }
 
-    function calculate(uint256 bias, int256 slope, uint256 duration) internal pure returns (uint256) {
+    function _calculate(uint256 bias, int256 slope, uint256 duration) internal pure returns (uint256) {
         if (bias < uint256(slope) * (duration)) {
             return 0;
         }
