@@ -21,17 +21,6 @@ contract veCarvToken is IveCarv, ERC20 {
         vault = vault_;
     }
 
-    function transfer(address to, uint256 value) onlyVault public override returns (bool) {
-        _transfer(msg.sender, to, value);
-        return true;
-    }
-    function approve(address spender, uint256 value) public override returns (bool) {
-        revert("Approve not allowed");
-    }
-    function transferFrom(address from, address to, uint256 value) public override returns (bool) {
-        revert("TransferFrom not allowed");
-    }
-
     function deposit(uint256 amount, address receiver) external {
         IERC20(carvToken).transferFrom(msg.sender, address(this), amount);
         _mint(receiver, amount);
@@ -93,6 +82,17 @@ contract veCarvToken is IveCarv, ERC20 {
         IERC20(carvToken).transfer(vault, cannotClaimAmountBatch - tobeBurnedAmountBatch);
 
         emit ClaimBatch(withdrawIDs, claimAmountBatch);
+    }
+
+    function transfer(address to, uint256 value) onlyVault public override returns (bool) {
+        _transfer(msg.sender, to, value);
+        return true;
+    }
+    function approve(address spender, uint256 value) public override returns (bool) {
+        revert("Approve not allowed");
+    }
+    function transferFrom(address from, address to, uint256 value) public override returns (bool) {
+        revert("TransferFrom not allowed");
     }
 
     function _claim(uint64 withdrawID) internal returns (uint256 claimAmount, uint256 cannotClaimAmount) {

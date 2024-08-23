@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IveCarv.sol";
 
-contract Vault is IVault, AccessControlUpgradeable {
+contract Vault is IVault, AccessControl {
     bytes32 public constant FOUNDATION_ROLE = keccak256("FOUNDATION_ROLE");
     bytes32 public constant SERVICE_ROLE = keccak256("SERVICE_ROLE");
     bytes32 public constant TEE_ROLE = keccak256("TEE_ROLE");
-    uint256 constant CARV_TOTAL_REWARDS = 25e7 * 1e18; // todo calculate
+    uint256 constant CARV_TOTAL_REWARDS = 249998940 * 1e18;
 
     uint256 public override startTimestamp;
     address public carvToken;
@@ -24,16 +24,15 @@ contract Vault is IVault, AccessControlUpgradeable {
         startTimestamp = startTimestamp_;
     }
 
-    function initialize(address foundation, address service) public initializer {
-        __AccessControl_init();
+    // receive source token
+    fallback() external payable{}
+    receive() external payable{}
+
+    function initialize(address foundation, address service) public {
         _grantRole(FOUNDATION_ROLE, foundation);
         _grantRole(SERVICE_ROLE, service);
         _grantRole(TEE_ROLE, service);
     }
-
-    // receive source token
-    fallback() external payable{}
-    receive() external payable{}
 
     function foundationWithdraw(address token, uint256 amount) external onlyRole(FOUNDATION_ROLE) {
         if (token == address(0)) {
