@@ -32,11 +32,10 @@ contract veCarvToken is IveCarv, ERC20 {
         revert("TransferFrom not allowed");
     }
 
-    // foundation -> vault -> deposit
-    function deposit(uint256 amount) external {
+    function deposit(uint256 amount, address receiver) external {
         IERC20(carvToken).transferFrom(msg.sender, address(this), amount);
-        _mint(msg.sender, amount);
-        emit Deposit(msg.sender, amount);
+        _mint(receiver, amount);
+        emit Deposit(msg.sender, receiver, amount);
     }
 
     function withdraw(uint256 amount) external {

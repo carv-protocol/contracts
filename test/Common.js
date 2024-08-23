@@ -121,7 +121,7 @@ exports.deployToken2 = async function() {
 
 exports.deploySettings = async function deploySettings() {
     const [owner] = await ethers.getSigners();
-    const Settings = await ethers.getContractFactory("Settings");
+    const Settings = await ethers.getContractFactory("contracts/Settings.sol:Settings");
     const settings = await Settings.deploy();
     return { settings, owner };
 }
@@ -159,7 +159,7 @@ exports.deployAll = async function () {
     const veCarvToken = await ethers.getContractFactory("veCarvToken");
     const CarvNft = await ethers.getContractFactory("CarvNft");
     const Vault = await ethers.getContractFactory("Vault");
-    const Settings = await ethers.getContractFactory("Settings");
+    const Settings = await ethers.getContractFactory("contracts/Settings.sol:Settings");
     const CarvVrf = await ethers.getContractFactory("CarvVrf");
     const ProtocolService = await ethers.getContractFactory("ProtocolService");
     const Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");

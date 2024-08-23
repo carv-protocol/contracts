@@ -18,7 +18,7 @@ interface IveCarv {
         uint256 timestamp;
     }
 
-    event Deposit(address depositer, uint256 amount);
+    event Deposit(address depositer, address receiver, uint256 amount);
 
     event Withdraw(uint64 indexed id, address withdrawer, uint256 amount);
 
@@ -41,8 +41,9 @@ interface IveCarv {
      * @dev Emits `Deposit`.
      *
      * @param amount: amount of CARV to be deposited
+     * @param receiver: receiver of veCARV Token
      */
-    function deposit(uint256 amount) external;
+    function deposit(uint256 amount, address receiver) external;
 
     /**
      * @notice convert veCARV to CARV, veCARV conversion to CARV requires an unlocking period.

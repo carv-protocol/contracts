@@ -58,7 +58,7 @@ contract Vault is IVault, AccessControlUpgradeable {
 
     function teeDeposit(uint256 amount) external onlyRole(TEE_ROLE) {
         IERC20(carvToken).approve(veCarvToken, amount);
-        IveCarv(veCarvToken).deposit(amount);
+        IveCarv(veCarvToken).deposit(amount, address(this));
         assets[TEE_ROLE][veCarvToken] += amount;
         emit TeeDeposit(amount);
     }
@@ -73,7 +73,7 @@ contract Vault is IVault, AccessControlUpgradeable {
     function rewardsInit() external onlyRole(FOUNDATION_ROLE) {
         IERC20(carvToken).transferFrom(msg.sender, address(this), CARV_TOTAL_REWARDS);
         IERC20(carvToken).approve(veCarvToken, CARV_TOTAL_REWARDS);
-        IveCarv(veCarvToken).deposit(CARV_TOTAL_REWARDS);
+        IveCarv(veCarvToken).deposit(CARV_TOTAL_REWARDS, address(this));
 
         assets[SERVICE_ROLE][veCarvToken] = CARV_TOTAL_REWARDS;
     }

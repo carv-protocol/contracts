@@ -12,14 +12,14 @@ describe("veCarvToken", function () {
     it("deposit", async function () {
         const { carv, veCarv, owner } = await deployToken();
         await carv.approve(veCarv.address, E18(1000))
-        await veCarv.deposit(E18(1000));
+        await veCarv.deposit(E18(1000), owner.address);
         expect(await veCarv.balanceOf(owner.address)).to.equal(E18(1000));
     });
 
     it("withdraw", async function () {
         const { carv, veCarv, owner } = await deployToken();
         await expect(carv.approve(veCarv.address, E18(1000))).not.to.be.reverted
-        await expect(veCarv.deposit(E18(1000))).not.to.be.reverted
+        await expect(veCarv.deposit(E18(1000), owner.address)).not.to.be.reverted
         await expect(veCarv.withdraw(E18(100))).not.to.be.reverted
         expect(await veCarv.balanceOf(owner.address)).to.equal(E18(900));
         expect((await veCarv.withdrawInfos(1)).amount).to.equal(E18(99));
@@ -34,7 +34,7 @@ describe("veCarvToken", function () {
         async function depositAndWithdraw() {
             await expect(carv.transfer(alice.address, E18(1000))).not.to.be.reverted
             await expect(carv.connect(alice).approve(veCarv.address, E18(1000))).not.to.be.reverted
-            await expect(veCarv.connect(alice).deposit(E18(1000))).not.to.be.reverted
+            await expect(veCarv.connect(alice).deposit(E18(1000), alice.address)).not.to.be.reverted
             expect(await veCarv.balanceOf(alice.address)).to.equal(E18(1000))
             await expect(veCarv.connect(alice).withdraw(E18(1000))).not.to.be.reverted
         }
