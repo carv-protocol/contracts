@@ -56,14 +56,6 @@ contract veCarvs is Settings, Multicall {
     event Claim(uint64 indexed positionID, uint256 reward);
     event UpdateShare(uint256 accumulatedRewardPerShare);
 
-    constructor(string memory name_, string memory symbol_, address carvToken) {
-        name = name_;
-        symbol = symbol_;
-        token = carvToken;
-        initialTimestamp = (block.timestamp / DURATION_PER_EPOCH) * DURATION_PER_EPOCH;
-        epochPoints.push(EpochPoint(0, 0, 0));
-    }
-
     function initialize(
         string memory name_, string memory symbol_, address carvToken
     ) public initializer {
@@ -71,6 +63,7 @@ contract veCarvs is Settings, Multicall {
         symbol = symbol_;
         token = carvToken;
         initialTimestamp = (block.timestamp / DURATION_PER_EPOCH) * DURATION_PER_EPOCH;
+        epochPoints.push(EpochPoint(0, 0, 0));
         __Settings_init(msg.sender);
     }
 
