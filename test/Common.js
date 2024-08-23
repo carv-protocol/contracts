@@ -100,11 +100,23 @@ exports.deployToken2 = async function() {
 
     const CarvToken = await ethers.getContractFactory("MockCarvToken");
     const veCarvTokens = await ethers.getContractFactory("veCarvs");
+    const Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
 
     const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
-    const veCarvs = await veCarvTokens.deploy("veCARV(s)", "veCARV(s)", carv.address);
+    const veCarvs = await veCarvTokens.deploy();
 
-    return { carv, veCarvs, owner, alice, bob };
+    let proxy = await Proxy.deploy(veCarvs.address, owner.address, ethers.utils.toUtf8Bytes(""))
+    proxy = veCarvTokens.attach(proxy.address)
+    await proxy.initialize("veCARV(s)", "veCARV(s)", carv.address)
+
+    await proxy.updateSettings({
+        rewardPerSecond: e(1, 16),
+        minStakingAmount: e18(10),
+        rewardFactor: 120,
+        stakingFactor: 120,
+    });
+
+    return [carv, proxy, owner, alice, bob];
 }
 
 exports.deploySettings = async function deploySettings() {

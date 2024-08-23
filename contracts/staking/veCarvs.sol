@@ -103,7 +103,6 @@ contract veCarvs is Settings, Multicall {
         _updateShare();
 
         uint256 pendingReward = (position.share * accumulatedRewardPerShare) / PRECISION_FACTOR - position.debt;
-
         IERC20(token).transfer(msg.sender, position.balance+pendingReward);
         rewardTokenAmount -= pendingReward;
         totalShare -= position.share;
