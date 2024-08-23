@@ -3,8 +3,10 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./Settings.sol";
 
-contract veCarvs is Multicall {
+// TODO 改proxy
+contract veCarvs is Settings, Multicall {
     struct Position {
         address user;
         uint256 balance;
@@ -22,7 +24,10 @@ contract veCarvs is Multicall {
     /*---------- event ----------*/
     event Deposit(uint64 indexed positionID, address indexed user, uint256 amount,
         uint256 begin, uint256 duration, uint256 share, uint256 debt);
-    event Withdraw(uint64 indexed positionID);
+    event Withdraw(uint64 indexed positionID, uint256 reward);
+    event Claim(uint64 indexed positionID, uint256 reward);
+
+    event UpdateShare(uint256 accumulatedRewardPerShare);
 
     /*---------- token infos ----------*/
     address public token;
@@ -30,8 +35,6 @@ contract veCarvs is Multicall {
     string public symbol;
 
     /*---------- Global reward parameters ----------*/
-    uint256 public constant REWARD_PER_SECOND = 1e16; // 0.01 CARV Token
-    uint256 public constant REWARD_FACTOR = 90 days;
     uint256 public constant PRECISION_FACTOR = 1e18;
     uint256 public accumulatedRewardPerShare;
     uint256 public totalShare;
@@ -41,9 +44,7 @@ contract veCarvs is Multicall {
     /*---------- Global algorithm parameters ----------*/
     // The contract will define the length of min time period here.
     uint256 public constant DURATION_PER_EPOCH = 1 days;
-    // Carv is exchanged for veCarv(s) according to a linear exchange,
-    // and veCarv(s) is obtained at a ratio of 1:1 after [stakingFactor] epochs.
-    uint256 public constant stakingFactor = 20;
+
     uint256 public immutable initialTimestamp;
     // epoch -> delta slope
     mapping(uint32 => int256) public slopeChanges;
@@ -106,13 +107,14 @@ contract veCarvs is Multicall {
 
     function deposit(uint256 amount, uint256 duration) external {
         require(duration % DURATION_PER_EPOCH == 0, "invalid duration");
-        require(amount > 0, "invalid amount");
+        require(supportedDuration[uint16(duration/DURATION_PER_EPOCH)], "invalid duration");
+        require(amount >= minStakingAmount, "invalid amount");
         IERC20(token).transferFrom(msg.sender, address(this), amount);
 
         _updateShare();
 
         uint256 beginTimestamp = (block.timestamp / DURATION_PER_EPOCH) * DURATION_PER_EPOCH;
-        uint256 share = amount * duration / REWARD_FACTOR;
+        uint256 share = amount * duration / (rewardFactor * DURATION_PER_EPOCH);
         uint256 debt = (share * accumulatedRewardPerShare) / PRECISION_FACTOR;
 
         positionIndex++;
@@ -138,7 +140,7 @@ contract veCarvs is Multicall {
         rewardTokenAmount -= pendingReward;
         totalShare -= position.share;
         delete positions[positionID];
-        emit Withdraw(positionID);
+        emit Withdraw(positionID, pendingReward);
     }
 
     function claim(uint64 positionID) external {
@@ -152,6 +154,7 @@ contract veCarvs is Multicall {
             IERC20(token).transfer(msg.sender, pendingReward);
             rewardTokenAmount -= pendingReward;
             position.debt = (position.share * accumulatedRewardPerShare) / PRECISION_FACTOR;
+            emit Claim(positionID, pendingReward);
         }
     }
 
@@ -178,9 +181,10 @@ contract veCarvs is Multicall {
             return;
         }
 
-        uint256 newReward = (block.timestamp - lastRewardTimestamp) * REWARD_PER_SECOND;
+        uint256 newReward = (block.timestamp - lastRewardTimestamp) * rewardPerSecond;
         accumulatedRewardPerShare += (newReward * PRECISION_FACTOR) / totalShare;
         lastRewardTimestamp = block.timestamp;
+        emit UpdateShare(accumulatedRewardPerShare);
     }
 
     function _biasAt(EpochPoint[] memory epochPoints_, mapping(uint32 => int256) storage slopeChanges_, uint256 timestamp) internal view returns (uint256) {
