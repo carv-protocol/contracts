@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./interfaces/IveCarv.sol";
 
-contract veCarvToken is IveCarv, ERC20 {
-    using SafeERC20 for IERC20;
-
+contract veCarvToken is AccessControl, ERC20, IveCarv {
+    bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
+    bytes32 public constant TRANSFER_ROLE = keccak256("TRANSFER_ROLE");
+    bytes32 public constant TRANSFER_FROM_ROLE = keccak256("TRANSFER_FROM_ROLE");
     address constant DEAD = 0x000000000000000000000000000000000000dEaD;
     uint256 constant ONE = 1e18;
 
@@ -16,12 +17,15 @@ contract veCarvToken is IveCarv, ERC20 {
     address public vault;
     mapping(uint64 => WithdrawInfo) public withdrawInfos;
 
-    constructor(string memory name, string memory symbol, address carvToken_, address vault_) ERC20(name, symbol) {
+    constructor(
+        string memory name, string memory symbol, address carvToken_, address vault_
+    ) ERC20(name, symbol) {
         carvToken = carvToken_;
         vault = vault_;
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function deposit(uint256 amount, address receiver) external {
+    function deposit(uint256 amount, address receiver) external onlyRole(DEPOSITOR_ROLE) {
         IERC20(carvToken).transferFrom(msg.sender, address(this), amount);
         _mint(receiver, amount);
         emit Deposit(msg.sender, receiver, amount);
@@ -84,15 +88,12 @@ contract veCarvToken is IveCarv, ERC20 {
         emit ClaimBatch(withdrawIDs, claimAmountBatch);
     }
 
-    function transfer(address to, uint256 value) onlyVault public override returns (bool) {
-        _transfer(msg.sender, to, value);
-        return true;
+    function transfer(address to, uint256 value) public onlyRole(TRANSFER_ROLE) override returns (bool) {
+        return super.transfer(to, value);
     }
-    function approve(address spender, uint256 value) public override returns (bool) {
-        revert("Approve not allowed");
-    }
-    function transferFrom(address from, address to, uint256 value) public override returns (bool) {
-        revert("TransferFrom not allowed");
+
+    function transferFrom(address from, address to, uint256 value) public onlyRole(TRANSFER_FROM_ROLE) override returns (bool) {
+        return super.transferFrom(from, to, value);
     }
 
     function _claim(uint64 withdrawID) internal returns (uint256 claimAmount, uint256 cannotClaimAmount) {
@@ -122,8 +123,4 @@ contract veCarvToken is IveCarv, ERC20 {
         }
     }
 
-    modifier onlyVault() {
-        require(vault == msg.sender, "Only vault can transfer");
-        _;
-    }
 }

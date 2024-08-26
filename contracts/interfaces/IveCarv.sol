@@ -18,7 +18,7 @@ interface IveCarv {
         uint256 timestamp;
     }
 
-    event Deposit(address depositer, address receiver, uint256 amount);
+    event Deposit(address depositor, address receiver, uint256 amount);
 
     event Withdraw(uint64 indexed id, address withdrawer, uint256 amount);
 
