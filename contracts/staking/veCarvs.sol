@@ -26,7 +26,7 @@ contract veCarvs is Settings, Multicall {
     string public symbol;
 
     /*---------- Global reward parameters ----------*/
-    uint256 public constant PRECISION_FACTOR = 1e18;
+    uint256 public constant PRECISION = 1e18;
     uint256 public accumulatedRewardPerShare;
     uint256 public totalShare;
     uint256 public lastRewardTimestamp;
@@ -75,22 +75,25 @@ contract veCarvs is Settings, Multicall {
 
     function deposit(uint256 amount, uint256 duration) external {
         require(duration % DURATION_PER_EPOCH == 0, "invalid duration");
-        require(supportedDuration[uint16(duration/DURATION_PER_EPOCH)], "invalid duration");
         require(amount >= minStakingAmount, "invalid amount");
+
+        DurationInfo memory durationInfo = supportedDurations[uint16(duration/DURATION_PER_EPOCH)];
+        require(durationInfo.active, "invalid duration");
+
         IERC20(token).transferFrom(msg.sender, address(this), amount);
 
         _updateShare();
 
         uint256 beginTimestamp = (block.timestamp / DURATION_PER_EPOCH) * DURATION_PER_EPOCH;
-        uint256 share = amount * duration / (rewardFactor * DURATION_PER_EPOCH);
-        uint256 debt = (share * accumulatedRewardPerShare) / PRECISION_FACTOR;
+        uint256 share = amount * durationInfo.rewardWeight / DURATION_INFO_DECIMALS;
+        uint256 debt = (share * accumulatedRewardPerShare) / PRECISION;
 
         positionIndex++;
         positions[positionIndex] = Position(msg.sender, amount, beginTimestamp + duration, share, debt);
         totalShare += share;
 
         checkEpoch(msg.sender);
-        _updateCurrentPoint(msg.sender, amount, beginTimestamp, duration);
+        _updateCurrentPoint(msg.sender, durationInfo.stakingMultiplier, amount, beginTimestamp, duration);
 
         emit Deposit(positionIndex, msg.sender, amount, beginTimestamp, duration, share, debt);
     }
@@ -102,7 +105,7 @@ contract veCarvs is Settings, Multicall {
 
         _updateShare();
 
-        uint256 pendingReward = (position.share * accumulatedRewardPerShare) / PRECISION_FACTOR - position.debt;
+        uint256 pendingReward = (position.share * accumulatedRewardPerShare) / PRECISION - position.debt;
         IERC20(token).transfer(msg.sender, position.balance+pendingReward);
         rewardTokenAmount -= pendingReward;
         totalShare -= position.share;
@@ -116,11 +119,11 @@ contract veCarvs is Settings, Multicall {
 
         _updateShare();
 
-        uint256 pendingReward = (position.share * accumulatedRewardPerShare) / PRECISION_FACTOR - position.debt;
+        uint256 pendingReward = (position.share * accumulatedRewardPerShare) / PRECISION - position.debt;
         if (pendingReward > 0) {
             IERC20(token).transfer(msg.sender, pendingReward);
             rewardTokenAmount -= pendingReward;
-            position.debt = (position.share * accumulatedRewardPerShare) / PRECISION_FACTOR;
+            position.debt = (position.share * accumulatedRewardPerShare) / PRECISION;
             emit Claim(positionID, pendingReward);
         }
     }
@@ -181,7 +184,7 @@ contract veCarvs is Settings, Multicall {
         }
 
         uint256 newReward = (block.timestamp - lastRewardTimestamp) * rewardPerSecond;
-        accumulatedRewardPerShare += (newReward * PRECISION_FACTOR) / totalShare;
+        accumulatedRewardPerShare += (newReward * PRECISION) / totalShare;
         lastRewardTimestamp = block.timestamp;
         emit UpdateShare(accumulatedRewardPerShare);
     }
@@ -211,8 +214,10 @@ contract veCarvs is Settings, Multicall {
     }
 
     // update slope and bias
-    function _updateCurrentPoint(address user, uint256 amount, uint256 beginTimestamp, uint256 duration) internal {
-        uint256 initialBias = amount * duration / (stakingFactor * DURATION_PER_EPOCH);
+    function _updateCurrentPoint(
+        address user, uint32 stakingMultiplier, uint256 amount, uint256 beginTimestamp, uint256 duration
+    ) internal {
+        uint256 initialBias = amount * stakingMultiplier / DURATION_INFO_DECIMALS;
         uint256 slope = initialBias / duration + 1;
         uint32 endEpoch = epochAt(beginTimestamp + duration);
 

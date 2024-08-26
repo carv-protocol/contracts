@@ -112,8 +112,6 @@ exports.deployToken2 = async function() {
     await proxy.updateSettings({
         rewardPerSecond: e(1, 16),
         minStakingAmount: e18(10),
-        rewardFactor: 120,
-        stakingFactor: 120,
     });
 
     return [carv, proxy, owner, alice, bob];

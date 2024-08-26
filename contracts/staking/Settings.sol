@@ -8,19 +8,21 @@ contract Settings is Initializable {
     struct SettingParams {
         uint256 rewardPerSecond;
         uint256 minStakingAmount;
-        uint16 rewardFactor;
-        uint16 stakingFactor;
     }
 
+    struct DurationInfo {
+        bool active;
+        uint32 rewardWeight; // decimals 10000
+        uint32 stakingMultiplier; // decimals 10000
+    }
+
+    uint32 public constant DURATION_INFO_DECIMALS = 10000;
+    address public admin;
     uint256 public rewardPerSecond;
     uint256 public minStakingAmount;
-    uint16 public rewardFactor;
-    // Carv is exchanged for veCarv(s) according to a linear exchange,
-    // and veCarv(s) is obtained at a ratio of 1:1 after [stakingFactor] epochs.
-    uint16 public stakingFactor;
-    address public admin;
+
     // Users' depositing duration can only be within a limited range
-    mapping(uint16 => bool) public supportedDuration;
+    mapping(uint16 => DurationInfo) public supportedDurations;
 
     event UpdateSettings(SettingParams params);
     event ModifyAdmin(address newAdmin);
@@ -32,24 +34,24 @@ contract Settings is Initializable {
 
     function __Settings_init(address initialAdmin) internal onlyInitializing {
         admin = initialAdmin;
-        supportedDuration[30] = true;
-        supportedDuration[90] = true;
-        supportedDuration[180] = true;
-        supportedDuration[360] = true;
-        supportedDuration[720] = true;
-        supportedDuration[1080] = true;
+        supportedDurations[30] = DurationInfo(true, 2500, 2500);
+        supportedDurations[90] = DurationInfo(true, 7500, 7500);
+        supportedDurations[180] = DurationInfo(true, 15000, 15000);
+        supportedDurations[360] = DurationInfo(true, 30000, 30000);
+        supportedDurations[720] = DurationInfo(true, 60000, 60000);
+        supportedDurations[1080] = DurationInfo(true, 90000, 90000);
     }
 
     function updateSettings(SettingParams calldata params) external onlyAdmin {
         rewardPerSecond = params.rewardPerSecond;
-        rewardFactor = params.rewardFactor;
-        stakingFactor = params.stakingFactor;
         minStakingAmount = params.minStakingAmount;
         emit UpdateSettings(params);
     }
 
-    function modifySupportedDuration(uint16 duration, bool activate) external onlyAdmin {
-        supportedDuration[duration] = activate;
+    function modifySupportedDurations(
+        uint16 duration, bool activate, uint32 rewardWeight, uint32 stakingMultiplier
+    ) external onlyAdmin {
+        supportedDurations[duration] = DurationInfo(activate, rewardWeight, stakingMultiplier);
     }
 
     function modifyAdmin(address newAdmin) external onlyAdmin {

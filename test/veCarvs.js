@@ -44,22 +44,33 @@ describe("veCarvs", function () {
 
         expect(await veCarvs.rewardPerSecond()).to.equal(E(1, 16));
         expect(await veCarvs.minStakingAmount()).to.equal(E18(10));
-        expect(await veCarvs.rewardFactor()).to.equal(120);
-        expect(await veCarvs.stakingFactor()).to.equal(120);
         expect(await veCarvs.admin()).to.equal(owner.address);
-        expect(await veCarvs.supportedDuration(30)).to.equal(true);
-        expect(await veCarvs.supportedDuration(180)).to.equal(true);
-        expect(await veCarvs.supportedDuration(1080)).to.equal(true);
-        expect(await veCarvs.supportedDuration(0)).to.equal(false);
-        expect(await veCarvs.supportedDuration(120)).to.equal(false);
+
+        expect( (await veCarvs.supportedDurations(30)).active ).to.equal(true);
+        expect( (await veCarvs.supportedDurations(30)).rewardWeight ).to.equal(2500);
+        expect( (await veCarvs.supportedDurations(30)).stakingMultiplier ).to.equal(2500);
+
+        expect( (await veCarvs.supportedDurations(180)).active ).to.equal(true);
+        expect( (await veCarvs.supportedDurations(180)).rewardWeight ).to.equal(15000);
+        expect( (await veCarvs.supportedDurations(180)).stakingMultiplier ).to.equal(15000);
+
+        expect( (await veCarvs.supportedDurations(1080)).active ).to.equal(true);
+        expect( (await veCarvs.supportedDurations(1080)).rewardWeight ).to.equal(90000);
+        expect( (await veCarvs.supportedDurations(1080)).stakingMultiplier ).to.equal(90000);
+
+        expect( (await veCarvs.supportedDurations(0)).active ).to.equal(false);
+        expect( (await veCarvs.supportedDurations(0)).rewardWeight ).to.equal(0);
+        expect( (await veCarvs.supportedDurations(0)).stakingMultiplier ).to.equal(0);
+
+        expect( (await veCarvs.supportedDurations(120)).active ).to.equal(false);
+        expect( (await veCarvs.supportedDurations(120)).rewardWeight ).to.equal(0);
+        expect( (await veCarvs.supportedDurations(120)).stakingMultiplier ).to.equal(0);
 
         await expect(veCarvs.connect(alice).updateSettings({
             rewardPerSecond: E(1, 15),
             minStakingAmount: E18(100),
-            rewardFactor: 90,
-            stakingFactor: 150,
         })).to.be.reverted;
-        await expect(veCarvs.connect(alice).modifySupportedDuration(30, false)).to.be.reverted;
+        await expect(veCarvs.connect(alice).modifySupportedDurations(30, false, 0, 0)).to.be.reverted;
         await expect(veCarvs.connect(alice).modifyAdmin(alice.address)).to.be.reverted;
         await expect(veCarvs.modifyAdmin(alice.address)).not.to.be.reverted;
 
@@ -71,18 +82,23 @@ describe("veCarvs", function () {
             rewardFactor: 90,
             stakingFactor: 150,
         })).not.to.be.reverted;
-        await expect(veCarvs.connect(alice).modifySupportedDuration(30, false)).not.to.be.reverted;
-        await expect(veCarvs.connect(alice).modifySupportedDuration(120, true)).not.to.be.reverted;
+        await expect(veCarvs.connect(alice).modifySupportedDurations(30, false, 0, 0)).not.to.be.reverted;
+        await expect(veCarvs.connect(alice).modifySupportedDurations(120, true, 10000, 15000)).not.to.be.reverted;
 
         expect(await veCarvs.rewardPerSecond()).to.equal(E(1, 15));
         expect(await veCarvs.minStakingAmount()).to.equal(E18(100));
-        expect(await veCarvs.rewardFactor()).to.equal(90);
-        expect(await veCarvs.stakingFactor()).to.equal(150);
-        expect(await veCarvs.supportedDuration(30)).to.equal(false);
-        expect(await veCarvs.supportedDuration(1080)).to.equal(true);
-        expect(await veCarvs.supportedDuration(0)).to.equal(false);
-        expect(await veCarvs.supportedDuration(120)).to.equal(true);
 
+        expect( (await veCarvs.supportedDurations(30)).active ).to.equal(false);
+        expect( (await veCarvs.supportedDurations(30)).rewardWeight ).to.equal(0);
+        expect( (await veCarvs.supportedDurations(30)).stakingMultiplier ).to.equal(0);
+
+        expect( (await veCarvs.supportedDurations(1080)).active ).to.equal(true);
+        expect( (await veCarvs.supportedDurations(1080)).rewardWeight ).to.equal(90000);
+        expect( (await veCarvs.supportedDurations(1080)).stakingMultiplier ).to.equal(90000);
+
+        expect( (await veCarvs.supportedDurations(120)).active ).to.equal(true);
+        expect( (await veCarvs.supportedDurations(120)).rewardWeight ).to.equal(10000);
+        expect( (await veCarvs.supportedDurations(120)).stakingMultiplier ).to.equal(15000);
     });
 
     it("deposit-1", async function () {
