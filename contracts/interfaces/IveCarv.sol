@@ -15,18 +15,17 @@ interface IveCarv {
         address withdrawer;
         bool canceledOrClaimed;
         uint256 amount;
-        uint256 timestamp;
+        uint256 claimAmount;
+        uint256 endAt;
     }
 
     event Deposit(address depositor, address receiver, uint256 amount);
 
-    event Withdraw(uint64 indexed id, address withdrawer, uint256 amount);
+    event Withdraw(uint64 indexed id, address withdrawer, uint256 amount, uint256 duration);
 
     event CancelWithdraw(uint64 indexed id);
 
     event Claim(uint64 id, uint256 amount);
-
-    event ClaimBatch(uint64[] ids, uint256 amount);
 
     /**
      * @notice convert CARV to veCARV by locking CARV in this contract and minting veCARV to msg.sender.
@@ -55,7 +54,7 @@ interface IveCarv {
      *
      * @param amount: amount of veCARV to be withdrawn
      */
-    function withdraw(uint256 amount) external;
+    function withdraw(uint256 amount, uint256 duration) external;
 
     /**
      * @notice Cancel the Withdraw by withdrawID.
@@ -87,13 +86,4 @@ interface IveCarv {
      * @param withdrawID: The withdrawID that the user needs to claim CARV
      */
     function claim(uint64 withdrawID) external;
-
-    /**
-     * @notice To claim CARV by withdrawIDs (Batch).
-     *
-     * @dev Emits `ClaimBatch`.
-     *
-     * @param withdrawIDs: The withdrawIDs that the user needs to claim CARV
-     */
-    function claimBatch(uint64[] calldata withdrawIDs) external;
 }

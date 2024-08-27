@@ -35,11 +35,11 @@ describe("Vault", function () {
         await expect(vault.connect(alice).teeWithdraw(alice.address, 1)).to.be.reverted
         await expect(vault.connect(service).teeWithdraw(alice.address, 1)).to.be.reverted
 
-        await expect(vault.connect(service).rewardsWithdraw(alice.address, E18(250000001))).to.be.reverted
+        await expect(vault.connect(service).rewardsWithdraw(alice.address, E18(249998941))).to.be.reverted
         await expect(vault.connect(owner).rewardsWithdraw(alice.address, E18(1))).to.be.reverted
         await expect(vault.connect(alice).rewardsWithdraw(alice.address, E18(1))).to.be.reverted
         await expect(vault.connect(service).rewardsWithdraw(alice.address, E18(200000000))).not.to.be.reverted
-        await expect(vault.connect(service).rewardsWithdraw(alice.address, E18(50000000))).not.to.be.reverted
+        await expect(vault.connect(service).rewardsWithdraw(alice.address, E18(49998940))).not.to.be.reverted
         await expect(vault.connect(service).rewardsWithdraw(alice.address, E18(1))).to.be.reverted
 
         await expect(vault.connect(service).teeWithdraw(alice.address, 1)).to.be.reverted

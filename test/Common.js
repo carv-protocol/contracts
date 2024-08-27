@@ -90,9 +90,9 @@ exports.deployToken = async function() {
     const veCarvToken = await ethers.getContractFactory("veCarvToken");
 
     const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
-    const veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address, owner.address);
+    const veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address);
 
-    return { carv, veCarv, owner, alice, bob };
+    return [ carv, veCarv, owner, alice, bob ];
 }
 
 exports.deployToken2 = async function() {
@@ -141,8 +141,11 @@ exports.deployVault = async function () {
     const vaultAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 2)
 
     const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
-    const veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address, vaultAddr);
+    const veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address);
     const vault = await Vault.deploy(carv.address, veCarv.address, 1719792000);
+
+    await veCarv.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("DEPOSITOR_ROLE")), vault.address);
+    await veCarv.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TRANSFER_ROLE")), vault.address);
 
     await vault.initialize(owner.address, service.address)
     return [owner, service, alice, vault, carv, veCarv]
@@ -164,11 +167,10 @@ exports.deployAll = async function () {
     const MockVRFCoordinator = await ethers.getContractFactory("VRFCoordinator");
 
     const startTimestamp = await time.latest() //1719792000
-    const vaultAddr = contractAddr(signers[0].address, (await signers[0].getTransactionCount()) + 3)
 
     coordinator = await MockVRFCoordinator.deploy();
     carv = await CarvToken.deploy("CARV", "CARV", signers[0].address);
-    veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address, vaultAddr);
+    veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address);
     vault = await Vault.deploy(carv.address, veCarv.address, startTimestamp);
     setting = await Settings.deploy();
     vrf = await CarvVrf.deploy(coordinator.address);
@@ -177,6 +179,10 @@ exports.deployAll = async function () {
     nft = await CarvNft.deploy("CarvNft", "CarvNft");
     proxy = ProtocolService.attach(proxy.address)
     await proxy.initialize(carv.address, nft.address, vault.address, 42161)
+
+    await veCarv.setTreasuryAddress(vault.address)
+    await veCarv.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("DEPOSITOR_ROLE")), vault.address);
+    await veCarv.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TRANSFER_ROLE")), vault.address);
 
     await vault.initialize(signers[0].address, proxy.address)
     await setting.updateSettings({

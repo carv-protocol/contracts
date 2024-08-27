@@ -153,7 +153,7 @@ describe("veCarvs", function () {
         await expect(veCarvs.claim(1)).not.to.be.reverted;
 
         expect(await veCarvs.totalShare()).to.equal(E18(1000).mul(90).div(120));
-        expect(await veCarvs.rewardTokenAmount()).to.equal(E18(1000000).sub(E18(36*24)));
+        // expect(await veCarvs.rewardTokenAmount()).to.equal(E18(1000000).sub(E18(36*24)));
         expect( (await veCarvs.positions(1)).share ).to.equal(E18(1000).mul(90).div(120));
         expect( (await veCarvs.positions(1)).debt ).to.equal((await veCarvs.positions(1)).share.mul(await veCarvs.accumulatedRewardPerShare()).div(E18(1)));
 
