@@ -55,6 +55,8 @@ contract veCarvs is Settings, Multicall {
     event Withdraw(uint64 indexed positionID, uint256 reward);
     event Claim(uint64 indexed positionID, uint256 reward);
     event UpdateShare(uint256 accumulatedRewardPerShare);
+    event NewPoint(address user, uint256 bias, int256 slope, uint32 epochIndex);
+    event UpdateCurrentPoint(address user, uint256 slope, uint256 initialBias, uint32 endEpoch);
 
     function initialize(
         string memory name_, string memory symbol_, address carvToken
@@ -63,7 +65,7 @@ contract veCarvs is Settings, Multicall {
         symbol = symbol_;
         token = carvToken;
         initialTimestamp = (block.timestamp / DURATION_PER_EPOCH) * DURATION_PER_EPOCH;
-        epochPoints.push(EpochPoint(0, 0, 0));
+        _newPoint(address(0), EpochPoint(0, 0, 0));
         __Settings_init(msg.sender);
     }
 
@@ -137,15 +139,15 @@ contract veCarvs is Settings, Multicall {
     }
 
     function checkEpoch(address withUser) public {
-        _checkEpoch(epochPoints, slopeChanges);
+        _checkEpoch(address(0), epochPoints, slopeChanges);
 
         if (withUser != address(0)) {
             if (userEpochPoints[withUser].length == 0) {
                 // initialize user array
-                userEpochPoints[withUser].push(EpochPoint(0, 0, epoch()));
+                _newPoint(withUser, EpochPoint(0, 0, epoch()));
                 return;
             }
-            _checkEpoch(userEpochPoints[withUser], userSlopeChanges[withUser]);
+            _checkEpoch(withUser, userEpochPoints[withUser], userSlopeChanges[withUser]);
         }
     }
 
@@ -189,7 +191,7 @@ contract veCarvs is Settings, Multicall {
         emit UpdateShare(accumulatedRewardPerShare);
     }
 
-    function _checkEpoch(EpochPoint[] storage epochPoints_, mapping(uint32 => int256) storage slopeChanges_) internal {
+    function _checkEpoch(address user, EpochPoint[] storage epochPoints_, mapping(uint32 => int256) storage slopeChanges_) internal {
         uint32 currentEpoch = epoch();
         uint32 lastRecordEpoch = epochPoints_[epochPoints_.length-1].epochIndex;
 
@@ -209,8 +211,17 @@ contract veCarvs is Settings, Multicall {
             newEpochPoint.slope = lastEpochPoint.slope + slopeChanges_[epochIndex];
             newEpochPoint.bias = _calculate(lastEpochPoint.bias, lastEpochPoint.slope, (epochIndex - lastEpochPoint.epochIndex) * DURATION_PER_EPOCH);
             newEpochPoint.epochIndex = epochIndex;
-            epochPoints_.push(newEpochPoint);
+            _newPoint(user, newEpochPoint);
         }
+    }
+
+    function _newPoint(address user, EpochPoint memory point) internal {
+        if (user == address(0)) {
+            epochPoints.push(point);
+        } else {
+            userEpochPoints[user].push(point);
+        }
+        emit NewPoint(user, point.bias, point.slope, point.epochIndex);
     }
 
     // update slope and bias
@@ -229,6 +240,8 @@ contract veCarvs is Settings, Multicall {
         userSlopeChanges[user][endEpoch] -= int256(slope);
         userEpochPoints[user][userEpochPoints[user].length-1].slope += int256(slope);
         userEpochPoints[user][userEpochPoints[user].length-1].bias += initialBias;
+
+        emit UpdateCurrentPoint(user, slope, initialBias, endEpoch);
     }
 
     function _biasAt(EpochPoint[] memory epochPoints_, mapping(uint32 => int256) storage slopeChanges_, uint256 timestamp) internal view returns (uint256) {

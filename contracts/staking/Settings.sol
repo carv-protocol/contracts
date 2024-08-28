@@ -25,6 +25,7 @@ contract Settings is Initializable {
     mapping(uint16 => DurationInfo) public supportedDurations;
 
     event UpdateSettings(SettingParams params);
+    event ModifySupportedDurations(uint16 duration, bool activate, uint32 rewardWeight, uint32 stakingMultiplier);
     event ModifyAdmin(address newAdmin);
 
     modifier onlyAdmin() {
@@ -34,12 +35,12 @@ contract Settings is Initializable {
 
     function __Settings_init(address initialAdmin) internal onlyInitializing {
         admin = initialAdmin;
-        supportedDurations[30] = DurationInfo(true, 2500, 2500);
-        supportedDurations[90] = DurationInfo(true, 7500, 7500);
-        supportedDurations[180] = DurationInfo(true, 15000, 15000);
-        supportedDurations[360] = DurationInfo(true, 30000, 30000);
-        supportedDurations[720] = DurationInfo(true, 60000, 60000);
-        supportedDurations[1080] = DurationInfo(true, 90000, 90000);
+        _modifySupportedDurations(30, true, 2500, 2500);
+        _modifySupportedDurations(90, true, 7500, 7500);
+        _modifySupportedDurations(180, true, 15000, 15000);
+        _modifySupportedDurations(360, true, 30000, 30000);
+        _modifySupportedDurations(720, true, 60000, 60000);
+        _modifySupportedDurations(1080, true, 90000, 90000);
     }
 
     function updateSettings(SettingParams calldata params) external onlyAdmin {
@@ -51,12 +52,19 @@ contract Settings is Initializable {
     function modifySupportedDurations(
         uint16 duration, bool activate, uint32 rewardWeight, uint32 stakingMultiplier
     ) external onlyAdmin {
-        supportedDurations[duration] = DurationInfo(activate, rewardWeight, stakingMultiplier);
+        _modifySupportedDurations(duration, activate, rewardWeight, stakingMultiplier);
     }
 
     function modifyAdmin(address newAdmin) external onlyAdmin {
         admin = newAdmin;
         emit ModifyAdmin(newAdmin);
+    }
+
+    function _modifySupportedDurations(
+        uint16 duration, bool activate, uint32 rewardWeight, uint32 stakingMultiplier
+    ) internal {
+        supportedDurations[duration] = DurationInfo(activate, rewardWeight, stakingMultiplier);
+        emit ModifySupportedDurations(duration, activate, rewardWeight, stakingMultiplier);
     }
 }
 
