@@ -10,7 +10,6 @@ contract Vault is IVault, AccessControlUpgradeable {
     bytes32 public constant FOUNDATION_ROLE = keccak256("FOUNDATION_ROLE");
     bytes32 public constant SERVICE_ROLE = keccak256("SERVICE_ROLE");
     bytes32 public constant TEE_ROLE = keccak256("TEE_ROLE");
-    uint256 constant CARV_TOTAL_REWARDS = 249998940 * 1e18; // TODO
 
     uint256 public override startTimestamp;
     address public carvToken;
