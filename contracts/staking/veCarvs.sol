@@ -180,12 +180,12 @@ contract veCarvs is Settings, Multicall {
 
         if (totalShare == 0) {
             lastRewardTimestamp = block.timestamp;
-            return;
+        } else {
+            uint256 newReward = (block.timestamp - lastRewardTimestamp) * rewardPerSecond;
+            accumulatedRewardPerShare += (newReward * PRECISION) / totalShare;
+            lastRewardTimestamp = block.timestamp;
         }
 
-        uint256 newReward = (block.timestamp - lastRewardTimestamp) * rewardPerSecond;
-        accumulatedRewardPerShare += (newReward * PRECISION) / totalShare;
-        lastRewardTimestamp = block.timestamp;
         emit UpdateShare(accumulatedRewardPerShare);
     }
 
