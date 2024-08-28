@@ -5,6 +5,7 @@ const { E, E18, deployAll, signNodeEnter, signNodeExit, signModifyCommission, si
 
 describe("Service", function () {
     let carv, veCarv, nft, vault, setting, vrf, proxy, service, coordinator, signers
+    const CarvTotalRewards = E18(249998940)
 
     beforeEach(async function () {
         [carv, veCarv, nft, vault, setting, vrf, proxy, service, coordinator, signers] = await deployAll()
@@ -149,7 +150,7 @@ describe("Service", function () {
         let alice = signers[1]
 
         await carv.approve(vault.address, E18(250000000))
-        await vault.rewardsInit()
+        await vault.rewardsDeposit(CarvTotalRewards)
 
         await nft.mint(alice.address, 1, {code:"", price: 0, tier: 0});
         await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
@@ -269,7 +270,7 @@ describe("Service", function () {
 
     it("Node Slash", async function () {
         await carv.approve(vault.address, E18(250000000))
-        await vault.rewardsInit()
+        await vault.rewardsDeposit(CarvTotalRewards)
 
         let owner = signers[0]
         let alice = signers[1]

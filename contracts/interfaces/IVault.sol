@@ -9,9 +9,9 @@ interface IVault {
 
     event TeeWithdraw(address to, uint256 amount);
 
-    event RewardsInit();
+    event RewardsDeposit(uint256 amount);
 
-    event RewardsWithdraw();
+    event RewardsWithdraw(address to, uint256 amount);
 
     event ChangeFoundation(address newFoundation);
 
@@ -46,13 +46,13 @@ interface IVault {
     function teeWithdraw(address receiver, uint256 amount) external;
 
     /**
-     * @notice Rewards account initialization, only foundation authority can operate
-     * @notice Deposit all veCARV(CARV -> veCARV) for verification rewards
+     * @notice Rewards account Deposit, only foundation authority can operate
+     * @notice Deposit veCARV(CARV -> veCARV) for verification rewards
      * @notice Define token release rules
      *
-     * @dev Emits `RewardsInit`.
+     * @dev Emits `RewardsDeposit`.
      */
-    function rewardsInit() external;
+    function rewardsDeposit(uint256 amount) external;
 
     /**
      * @notice Called by ServiceProtocol contract, used to issue rewards to nodes or NFT holders.

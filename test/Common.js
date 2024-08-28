@@ -138,16 +138,14 @@ exports.deployVault = async function () {
     const veCarvToken = await ethers.getContractFactory("veCarvToken");
     const Vault = await ethers.getContractFactory("Vault");
 
-    const vaultAddr = contractAddr(owner.address, (await owner.getTransactionCount()) + 2)
-
     const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
     const veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address);
-    const vault = await Vault.deploy(carv.address, veCarv.address, 1719792000);
+    const vault = await Vault.deploy();
 
     await veCarv.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("DEPOSITOR_ROLE")), vault.address);
     await veCarv.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TRANSFER_ROLE")), vault.address);
 
-    await vault.initialize(owner.address, service.address)
+    await vault.initialize(carv.address, veCarv.address, service.address, 1719792000)
     return [owner, service, alice, vault, carv, veCarv]
 }
 
@@ -171,7 +169,7 @@ exports.deployAll = async function () {
     coordinator = await MockVRFCoordinator.deploy();
     carv = await CarvToken.deploy("CARV", "CARV", signers[0].address);
     veCarv = await veCarvToken.deploy("veCARV", "veCARV", carv.address);
-    vault = await Vault.deploy(carv.address, veCarv.address, startTimestamp);
+    vault = await Vault.deploy();
     setting = await Settings.deploy();
     vrf = await CarvVrf.deploy(coordinator.address);
     service = await ProtocolService.deploy();
@@ -184,7 +182,7 @@ exports.deployAll = async function () {
     await veCarv.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("DEPOSITOR_ROLE")), vault.address);
     await veCarv.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TRANSFER_ROLE")), vault.address);
 
-    await vault.initialize(signers[0].address, proxy.address)
+    await vault.initialize(carv.address, veCarv.address, proxy.address, startTimestamp)
     await setting.updateSettings({
         maxVrfActiveNodes: 2000,
         nodeMinOnlineDuration: 21600, // 6 hours

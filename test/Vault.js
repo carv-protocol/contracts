@@ -4,6 +4,7 @@ const { E, E18, deployVault} = require("./Common")
 
 describe("Vault", function () {
     let owner, service, alice, vault, carv, veCarv
+    const CarvTotalRewards = E18(249998940)
 
     beforeEach(async function () {
         [owner, service, alice, vault, carv, veCarv] = await deployVault()
@@ -22,12 +23,12 @@ describe("Vault", function () {
         const ZeroAddress = "0x0000000000000000000000000000000000000000"
 
         await expect(carv.approve(vault.address, E18(200000000))).not.to.be.reverted
-        await expect(vault.rewardsInit()).to.be.reverted
+        await expect(vault.rewardsDeposit(CarvTotalRewards)).to.be.reverted
         await expect(carv.approve(vault.address, E18(250000000))).not.to.be.reverted
-        await expect(vault.connect(service).rewardsInit()).to.be.reverted
-        await expect(vault.connect(alice).rewardsInit()).to.be.reverted
+        await expect(vault.connect(service).rewardsDeposit(CarvTotalRewards)).to.be.reverted
+        await expect(vault.connect(alice).rewardsDeposit(CarvTotalRewards)).to.be.reverted
         await expect(vault.connect(service).rewardsWithdraw(alice.address, E18(1))).to.be.reverted
-        await expect(vault.rewardsInit()).not.to.be.reverted
+        await expect(vault.rewardsDeposit(CarvTotalRewards)).not.to.be.reverted
 
         await expect(vault.connect(owner).foundationWithdraw(veCarv.address, 1)).to.be.reverted
         await expect(vault.connect(owner).foundationWithdraw(ZeroAddress, 1)).to.be.reverted
@@ -65,7 +66,7 @@ describe("Vault", function () {
         const ZeroAddress = "0x0000000000000000000000000000000000000000"
 
         await expect(carv.approve(vault.address, E18(250000000))).not.to.be.reverted
-        await expect(vault.rewardsInit()).not.to.be.reverted
+        await expect(vault.rewardsDeposit(CarvTotalRewards)).not.to.be.reverted
 
         await expect(vault.connect(owner).foundationWithdraw(veCarv.address, 1)).to.be.reverted
         await expect(vault.connect(owner).foundationWithdraw(ZeroAddress, 1)).to.be.reverted

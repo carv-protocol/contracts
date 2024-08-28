@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IveCarv.sol";
 
-contract Vault is IVault, AccessControl {
+contract Vault is IVault, AccessControlUpgradeable {
     bytes32 public constant FOUNDATION_ROLE = keccak256("FOUNDATION_ROLE");
     bytes32 public constant SERVICE_ROLE = keccak256("SERVICE_ROLE");
     bytes32 public constant TEE_ROLE = keccak256("TEE_ROLE");
-    uint256 constant CARV_TOTAL_REWARDS = 249998940 * 1e18;
+    uint256 constant CARV_TOTAL_REWARDS = 249998940 * 1e18; // TODO
 
     uint256 public override startTimestamp;
     address public carvToken;
@@ -18,18 +18,17 @@ contract Vault is IVault, AccessControl {
 
     mapping(bytes32 => mapping(address => uint256)) public assets;
 
-    constructor(address carv, address veCarv, uint256 startTimestamp_) {
-        carvToken = carv;
-        veCarvToken = veCarv;
-        startTimestamp = startTimestamp_;
-    }
-
     // receive source token
     fallback() external payable{}
     receive() external payable{}
 
-    function initialize(address foundation, address service) public {
-        _grantRole(FOUNDATION_ROLE, foundation);
+    function initialize(
+        address carv, address veCarv, address service, uint256 startTimestamp_
+    ) public initializer {
+        carvToken = carv;
+        veCarvToken = veCarv;
+        startTimestamp = startTimestamp_;
+        _grantRole(FOUNDATION_ROLE, msg.sender);
         _grantRole(SERVICE_ROLE, service);
         _grantRole(TEE_ROLE, service);
     }
@@ -69,17 +68,19 @@ contract Vault is IVault, AccessControl {
         emit TeeWithdraw(receiver, amount);
     }
 
-    function rewardsInit() external onlyRole(FOUNDATION_ROLE) {
-        IERC20(carvToken).transferFrom(msg.sender, address(this), CARV_TOTAL_REWARDS);
-        IERC20(carvToken).approve(veCarvToken, CARV_TOTAL_REWARDS);
-        IveCarv(veCarvToken).deposit(CARV_TOTAL_REWARDS, address(this));
+    function rewardsDeposit(uint256 amount) external onlyRole(FOUNDATION_ROLE) {
+        IERC20(carvToken).transferFrom(msg.sender, address(this), amount);
+        IERC20(carvToken).approve(veCarvToken, amount);
+        IveCarv(veCarvToken).deposit(amount, address(this));
 
-        assets[SERVICE_ROLE][veCarvToken] = CARV_TOTAL_REWARDS;
+        assets[SERVICE_ROLE][veCarvToken] = amount;
+        emit RewardsDeposit(amount);
     }
 
     function rewardsWithdraw(address receiver, uint256 amount) external onlyRole(SERVICE_ROLE) {
         IERC20(veCarvToken).transfer(receiver, amount);
         assets[SERVICE_ROLE][veCarvToken] -= amount;
+        emit RewardsWithdraw(receiver, amount);
     }
 
     function changeFoundation(address newFoundation) external onlyRole(FOUNDATION_ROLE) {
