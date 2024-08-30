@@ -61,19 +61,6 @@ interface IProtocolService {
     }
 
     /**
-     * @notice This struct represents staking information of a tee
-     *
-     * `valid`: Whether tee is currently valid, invalid tee cannot report attestation
-     * `staked`: tee’s current staked amount
-     * `lastReportAt`: The time when tee last reported attestation, used for unstake check
-     */
-    struct TeeStakeInfo {
-        bool valid;
-        uint256 staked;
-        uint256 lastReportAt;
-    }
-
-    /**
      * @notice This struct represents information of an attestation
      *
      * `reporter`: The address of the tee who reported this attestation
@@ -89,7 +76,6 @@ interface IProtocolService {
         uint16 invalid;
         uint16 malicious;
         uint32 vrfChosenID;
-        bool slashed;
         uint256 deadline;
     }
 
@@ -117,10 +103,6 @@ interface IProtocolService {
     event UpdateSettingsAddress(address settings);
 
     // tee
-    event TeeStake(address tee, uint256 amount);
-    event TeeUnstake(address tee, uint256 amount);
-    event TeeSlash(address slasher, bytes32 attestationID, uint256 amount, bool valid);
-    event ClaimMaliciousTeeRewards(address verifer, bytes32 attestationID, uint256 amount);
     event TeeReportAttestations(address tee, bytes32[] attestationIDs, string[] attestationInfos, uint256 requestID);
     event ConfirmVrfNodes(uint256 requestId, uint32[] vrfChosen, uint256 deadline);
 
@@ -163,53 +145,6 @@ interface IProtocolService {
      * @param carvVrf_: address of CarvVrf contract.
      */
     function updateVrfAddress(address carvVrf_) external;
-
-    /**
-     * @notice Tee needs to stake CARVs before reporting attestation,
-     * @notice and CARVs will be converted to veCARVs stored in Vault.
-     * @notice which will be used to slash when tee proven to be evil.
-     *
-     * @dev Only tee role (granted by admin role).
-     * @dev Emits `TeeStake`.
-     *
-     * @param amount: amount of CARV tee plans to stake.
-     */
-    function teeStake(uint256 amount) external;
-
-    /**
-     * @notice Tee withdraws staked veCARVs, rules are as follows:
-     * @notice 1. enough time has passed since the last attestation was submitted.
-     * @notice 2. veCARVs that have been slashed cannot be unstaked.
-     * @notice 3. unable to continue reporting attestation after unstaking.
-     *
-     * @dev Only tee role (granted by admin role).
-     * @dev Emits `TeeUnstake`.
-     */
-    function teeUnstake() external;
-
-    /**
-     * @notice When the attestation reported by a tee is proven to be malicious,
-     * @notice anyone can initiate a teeSlash, which will slash the veCARVs staked by the tee.
-     * @notice Each malicious attestation can only be slashed once.
-     * @notice When the veCARVs staked by a tee are slashed below a threshold,
-     * @notice the tee will be forcibly restricted from continuing to report attestation.
-     *
-     * @dev Emits `TeeSlash`.
-     *
-     * @param attestationID: id of attestation which is proven malicious.
-     */
-    function teeSlash(bytes32 attestationID) external;
-
-    /**
-     * @notice When an attestation reported by a tee is slashed,
-     * @notice verifiers that have reported verification for this attestation can claim the reward.
-     * @notice If a verifier have not reported verification of this attestation, it cannot claim the reward.
-     *
-     * @dev Emits `ClaimMaliciousTeeRewards`.
-     *
-     * @param attestationID: id of attestation which is slashed.
-     */
-    function claimMaliciousTeeRewards(bytes32 attestationID) external;
 
     /**
      * @notice Tee reports attestations. The same attestation can only be reported once.

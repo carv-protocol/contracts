@@ -5,10 +5,6 @@ interface IVault {
 
     event FoundationWithdraw(address token, uint256 amount);
 
-    event TeeDeposit(uint256 amount);
-
-    event TeeWithdraw(address to, uint256 amount);
-
     event RewardsDeposit(uint256 amount);
 
     event RewardsWithdraw(address to, uint256 amount);
@@ -25,25 +21,6 @@ interface IVault {
      * @param amount: amount of withdraw token
      */
     function foundationWithdraw(address token, uint256 amount) external;
-
-    /**
-     * @notice Deposit tee staked CARV to Vault contract (convert to veCARV).
-     * @notice Only tee authority can operate
-     *
-     * @dev Emits `TeeDeposit`.
-     */
-    function teeDeposit(uint256 amount) external;
-
-    /**
-     * @notice Called by ProtocolService contract when tee unstakes or verifier claims tee rewards.
-     * @notice transfer veCARV to receiver.
-     *
-     * @dev Emits `TeeWithdraw`.
-     *
-     * @param receiver: address who to receive veCARV.
-     * @param amount: amount of veCARV transferred to receiver.
-     */
-    function teeWithdraw(address receiver, uint256 amount) external;
 
     /**
      * @notice Rewards account Deposit, only foundation authority can operate

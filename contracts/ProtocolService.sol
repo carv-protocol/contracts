@@ -35,12 +35,10 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     mapping(address => uint16) public delegationWeights;
     mapping(address => NodeInfo) public nodeInfos;
     mapping(uint256 => TokenRewardInfo) public tokenRewardInfos;
-    mapping(address => TeeStakeInfo) public teeStakeInfos;
     mapping(bytes32 => Attestation) public attestations;
     mapping(uint256 => bytes32[]) public request2AttestationIDs;
     mapping(bytes32 => mapping(address => bool)) public attestationVerifiedNode;
     mapping(address => mapping(bytes32 => bool)) public nodeSlashed;
-    mapping(address => mapping(bytes32 => bool)) public nodeClaimedTeeRewards;
     mapping(uint32 => uint32) public globalDailyActiveNodes;
     mapping(address => mapping(uint32 => uint32)) public nodeDailyActive;
 
@@ -71,71 +69,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         emit UpdateVrfAddress(carvVrf_);
     }
 
-    // CARV to veCARV, stored in Vault
-    function teeStake(uint256 amount) external onlyTee {
-        IERC20(carvToken).transferFrom(msg.sender, vault, amount);
-        IVault(vault).teeDeposit(amount);
-
-        TeeStakeInfo storage teeStakeInfo = teeStakeInfos[msg.sender];
-        teeStakeInfo.staked += amount;
-        require(teeStakeInfo.staked >= ISettings(settings).minTeeStakeAmount(), "Not meet minTeeStakeAmount");
-        teeStakeInfo.valid = true;
-
-        emit TeeStake(msg.sender, amount);
-    }
-
-    // return veCARV to tee
-    function teeUnstake() external onlyTee {
-        TeeStakeInfo storage info = teeStakeInfos[msg.sender];
-        require(
-            block.timestamp - info.lastReportAt >= ISettings(settings).teeUnstakeDuration(),
-            "Locking"
-        );
-
-        uint256 amount = info.staked;
-        info.valid = false;
-        info.staked = 0;
-
-        IVault(vault).teeWithdraw(msg.sender, amount);
-        emit TeeUnstake(msg.sender, amount);
-    }
-
-    function teeSlash(bytes32 attestationID) external {
-        Attestation storage attestation = attestations[attestationID];
-        require(!attestation.slashed, "Already slashed");
-        require(attestation.deadline < block.timestamp, "Deadline");
-        require(attestation.valid < attestation.malicious, "Valid attestation");
-        address tee = attestation.reporter;
-        TeeStakeInfo storage info = teeStakeInfos[tee];
-        require(info.valid, "Invalid tee");
-
-        uint256 totalSlash = ISettings(settings).teeSlashAmount() * (attestation.valid + attestation.invalid + attestation.malicious);
-        info.staked -= totalSlash;
-        if (info.staked < ISettings(settings).minTeeStakeAmount()) {
-            info.valid = false;
-        }
-        attestation.slashed = true;
-
-        emit TeeSlash(msg.sender, attestationID, totalSlash, info.valid);
-    }
-
-    function claimMaliciousTeeRewards(bytes32 attestationID) external {
-        require(attestations[attestationID].slashed, "Not slashed");
-        require(attestationVerifiedNode[attestationID][msg.sender], "Not verified");
-        require(!nodeClaimedTeeRewards[msg.sender][attestationID], "Already claimed");
-
-        uint256 reward = ISettings(settings).teeSlashAmount();
-        IVault(vault).teeWithdraw(msg.sender, reward);
-        nodeClaimedTeeRewards[msg.sender][attestationID] = true;
-
-        emit ClaimMaliciousTeeRewards(msg.sender, attestationID, reward);
-    }
-
     function teeReportAttestations(string[] memory attestationInfos) external onlyTee {
-        TeeStakeInfo storage tee = teeStakeInfos[msg.sender];
-        require(tee.valid, "Invalid");
-        tee.lastReportAt = block.timestamp;
-
         uint256 requestId = ICarvVrf(carvVrf).requestRandomWords();
 
         bytes32[] memory attestationIDs = new bytes32[](attestationInfos.length);

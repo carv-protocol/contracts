@@ -9,7 +9,6 @@ import "./interfaces/IveCarv.sol";
 contract Vault is IVault, AccessControlUpgradeable {
     bytes32 public constant FOUNDATION_ROLE = keccak256("FOUNDATION_ROLE");
     bytes32 public constant SERVICE_ROLE = keccak256("SERVICE_ROLE");
-    bytes32 public constant TEE_ROLE = keccak256("TEE_ROLE");
 
     uint256 public override startTimestamp;
     address public carvToken;
@@ -29,13 +28,12 @@ contract Vault is IVault, AccessControlUpgradeable {
         startTimestamp = startTimestamp_;
         _grantRole(FOUNDATION_ROLE, msg.sender);
         _grantRole(SERVICE_ROLE, service);
-        _grantRole(TEE_ROLE, service);
     }
 
     function foundationWithdraw(address token, uint256 amount) external onlyRole(FOUNDATION_ROLE) {
         if (token == address(0)) {
             require(
-                amount <= address(this).balance - (assets[SERVICE_ROLE][token] + assets[TEE_ROLE][token]),
+                amount <= address(this).balance - assets[SERVICE_ROLE][token],
                 "Insufficient eth"
             );
 
@@ -43,7 +41,7 @@ contract Vault is IVault, AccessControlUpgradeable {
             require(success, "Call foundation");
         } else {
             require(
-                amount <= IERC20(token).balanceOf(address(this)) - (assets[SERVICE_ROLE][token] + assets[TEE_ROLE][token]),
+                amount <= IERC20(token).balanceOf(address(this)) - assets[SERVICE_ROLE][token],
                 "Insufficient erc20"
             );
 
@@ -51,20 +49,6 @@ contract Vault is IVault, AccessControlUpgradeable {
         }
 
         emit FoundationWithdraw(token, amount);
-    }
-
-    function teeDeposit(uint256 amount) external onlyRole(TEE_ROLE) {
-        IERC20(carvToken).approve(veCarvToken, amount);
-        IveCarv(veCarvToken).deposit(amount, address(this));
-        assets[TEE_ROLE][veCarvToken] += amount;
-        emit TeeDeposit(amount);
-    }
-
-    function teeWithdraw(address receiver, uint256 amount) external onlyRole(TEE_ROLE) {
-        require(assets[TEE_ROLE][veCarvToken] >= amount, "Insufficient veCARV");
-        IERC20(veCarvToken).transfer(receiver, amount);
-        assets[TEE_ROLE][veCarvToken] -= amount;
-        emit TeeWithdraw(receiver, amount);
     }
 
     function rewardsDeposit(uint256 amount) external onlyRole(FOUNDATION_ROLE) {

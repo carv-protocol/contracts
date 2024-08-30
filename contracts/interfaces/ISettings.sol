@@ -10,10 +10,6 @@ interface ISettings {
      * `nodeMinOnlineDuration`: The daily online time needs to be greater than `nodeMinOnlineDuration` to be profitable.
      * `nodeVerifyDuration`: After the node is selected by vrf, it needs to report verification within this duration.
      * `nodeSlashReward`: After the verifier node is slashed, the reward the transaction sender can obtain.
-     * `minTeeStakeAmount`: The minimum valid staked amount of a tee node.
-     *                      When the staked amount is lower than this, the tee node will not be able to report the attestation.
-     * `teeSlashAmount`: The amount of veCARV paid to a single verifier after a tee node is slashed once.
-     * `teeUnstakeDuration`: The minimum time duration between the time tee unstaking and the last time reporting the attestation.
      * `nodeMaxMissVerifyCount`: The maximum number of times a verifier node can miss verifications.
      *                           If it exceeds the limit, it will be forced exit.
      * `minCommissionRateModifyInterval`: The minimum time interval for verifier to modify commission rate
@@ -25,9 +21,6 @@ interface ISettings {
         uint256 nodeMinOnlineDuration;
         uint256 nodeVerifyDuration;
         uint256 nodeSlashReward;
-        uint256 minTeeStakeAmount;
-        uint256 teeSlashAmount;
-        uint256 teeUnstakeDuration;
         uint256 minCommissionRateModifyInterval;
         uint64 nodeMaxMissVerifyCount;
         uint32 maxCommissionRate;
@@ -48,9 +41,6 @@ interface ISettings {
     function nodeMinOnlineDuration() external view returns (uint256);
     function nodeVerifyDuration() external view returns (uint256);
     function nodeSlashReward() external view returns (uint256);
-    function minTeeStakeAmount() external view returns (uint256);
-    function teeSlashAmount() external view returns (uint256);
-    function teeUnstakeDuration() external view returns (uint256);
     function minCommissionRateModifyInterval() external view returns (uint256);
     function nodeMaxMissVerifyCount() external view returns (uint64);
     function maxCommissionRate() external view returns (uint32);

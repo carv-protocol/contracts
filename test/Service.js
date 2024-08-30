@@ -14,25 +14,9 @@ describe("Service", function () {
     it("Tee", async function () {
         let alice = signers[1]
 
-        await carv.transfer(alice.address, E18(10000000))
-
-        await expect(proxy.connect(alice).teeStake(E18(1000000))).to.be.reverted;
         await expect(proxy.modifyTeeRole(alice.address, true)).not.to.be.reverted;
-
-        await carv.connect(alice).approve(proxy.address, E18(1000000))
-        await expect(proxy.connect(alice).teeStake(E18(1000000))).not.to.be.reverted;
-        await expect(proxy.connect(alice).teeUnstake()).not.to.be.reverted;
-
-        await expect(proxy.connect(alice).teeReportAttestations(["test"])).to.be.reverted;
-        await carv.connect(alice).approve(proxy.address, E18(1000000))
-        await expect(proxy.connect(alice).teeStake(E18(1000000))).not.to.be.reverted;
         await expect(proxy.connect(alice).teeReportAttestations(["test"])).not.to.be.reverted;
-        await expect(proxy.connect(alice).teeUnstake()).to.be.reverted;
         await coordinator.callback(1, [123456789])
-
-        const hours6 = 6 * 60 * 60;
-        await time.increase(hours6);
-        await expect(proxy.connect(alice).teeUnstake()).not.to.be.reverted;
     });
 
     it("Node", async function () {
@@ -94,8 +78,6 @@ describe("Service", function () {
         await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
 
         await expect(proxy.modifyTeeRole(owner.address, true)).not.to.be.reverted;
-        await carv.approve(proxy.address, E18(1000000))
-        await expect(proxy.teeStake(E18(1000000))).not.to.be.reverted;
         await expect(proxy.teeReportAttestations(["test"])).not.to.be.reverted;
         await coordinator.callback(1, [123456789])
 
@@ -107,42 +89,6 @@ describe("Service", function () {
 
         // console.log(await proxy.attestations(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test"))))
         // console.log(await proxy.nodeInfos(alice.address))
-    });
-
-    it("Slash", async function () {
-        let owner = signers[0]
-        let alice = signers[1]
-
-        await nft.mint(alice.address, 1, {code:"", price: 0, tier: 0});
-        await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
-        await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
-
-        await expect(proxy.modifyTeeRole(owner.address, true)).not.to.be.reverted;
-        await carv.approve(proxy.address, E18(1000000))
-        await expect(proxy.teeStake(E18(1000000))).not.to.be.reverted;
-        await expect(proxy.teeReportAttestations(["test"])).not.to.be.reverted;
-        await coordinator.callback(1, [123456789])
-
-        await proxy.connect(alice).nodeReportVerification(
-            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
-            0,
-            2
-        )
-
-        await expect(proxy.connect(alice).teeSlash(
-            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test"))
-        )).to.be.reverted;
-
-        const minutes30 = 30 * 60;
-        await time.increase(minutes30);
-
-        await expect(proxy.connect(alice).teeSlash(
-            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test"))
-        )).not.to.be.reverted;
-
-        // console.log(await proxy.attestations(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test"))))
-        // console.log(await proxy.nodeInfos(alice.address))
-        // console.log(await proxy.teeStakeInfos(owner.address))
     });
 
     it("Claim", async function () {
@@ -157,8 +103,6 @@ describe("Service", function () {
         await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
 
         await expect(proxy.modifyTeeRole(owner.address, true)).not.to.be.reverted;
-        await carv.approve(proxy.address, E18(1000000))
-        await expect(proxy.teeStake(E18(1000000))).not.to.be.reverted;
         await expect(proxy.teeReportAttestations(["test"])).not.to.be.reverted;
         await coordinator.callback(1, [123456789])
 
@@ -222,9 +166,6 @@ describe("Service", function () {
             nodeMinOnlineDuration: 21600, // 6 hours
             nodeVerifyDuration: 1800,  // 30 minutes
             nodeSlashReward: E18(10) ,  // 10 veCARV
-            minTeeStakeAmount: E18(1e5),  // 10,000 CARV
-            teeSlashAmount: E18(100),      // 100 veCARV
-            teeUnstakeDuration: 21600,   // 6 hours
             minCommissionRateModifyInterval: 604800, // 1 week
             nodeMaxMissVerifyCount: 5,
             maxCommissionRate: 10000,  // 100%
@@ -258,9 +199,6 @@ describe("Service", function () {
             nodeMinOnlineDuration: 21600, // 6 hours
             nodeVerifyDuration: 1800,  // 30 minutes
             nodeSlashReward: E18(10) ,  // 10 veCARV
-            minTeeStakeAmount: E18(1e5),  // 10,000 CARV
-            teeSlashAmount: E18(100),      // 100 veCARV
-            teeUnstakeDuration: 21600,   // 6 hours
             minCommissionRateModifyInterval: 604800, // 1 week
             nodeMaxMissVerifyCount: 5,
             maxCommissionRate: 10000,  // 100%
@@ -280,8 +218,6 @@ describe("Service", function () {
         await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
 
         await expect(proxy.modifyTeeRole(owner.address, true)).not.to.be.reverted;
-        await carv.approve(proxy.address, E18(1000000))
-        await expect(proxy.teeStake(E18(1000000))).not.to.be.reverted;
 
         // ------
         await expect(proxy.teeReportAttestations(["test"])).not.to.be.reverted;

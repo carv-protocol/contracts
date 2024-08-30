@@ -188,9 +188,6 @@ exports.deployAll = async function () {
         nodeMinOnlineDuration: 21600, // 6 hours
         nodeVerifyDuration: 1800,  // 30 minutes
         nodeSlashReward: e18(10) ,  // 10 veCARV
-        minTeeStakeAmount: e18(1e5),  // 10,000 CARV
-        teeSlashAmount: e18(100),      // 100 veCARV
-        teeUnstakeDuration: 21600,   // 6 hours
         minCommissionRateModifyInterval: 604800, // 1 week
         nodeMaxMissVerifyCount: 5,
         maxCommissionRate: 10000,  // 100%

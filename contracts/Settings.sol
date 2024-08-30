@@ -10,9 +10,6 @@ contract Settings is ISettings, Ownable {
     uint256 public override nodeMinOnlineDuration;
     uint256 public override nodeVerifyDuration;
     uint256 public override nodeSlashReward;
-    uint256 public override minTeeStakeAmount;
-    uint256 public override teeSlashAmount;
-    uint256 public override teeUnstakeDuration;
     uint256 public override minCommissionRateModifyInterval;
     uint64 public override nodeMaxMissVerifyCount;
     uint32 public override maxCommissionRate;
@@ -29,9 +26,6 @@ contract Settings is ISettings, Ownable {
         nodeMinOnlineDuration = params.nodeMinOnlineDuration;
         nodeVerifyDuration = params.nodeVerifyDuration;
         nodeSlashReward = params.nodeSlashReward;
-        minTeeStakeAmount = params.minTeeStakeAmount;
-        teeSlashAmount = params.teeSlashAmount;
-        teeUnstakeDuration = params.teeUnstakeDuration;
         minCommissionRateModifyInterval = params.minCommissionRateModifyInterval;
         nodeMaxMissVerifyCount = params.nodeMaxMissVerifyCount;
         maxCommissionRate = params.maxCommissionRate;

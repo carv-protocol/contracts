@@ -32,9 +32,6 @@ describe("Vault", function () {
 
         await expect(vault.connect(owner).foundationWithdraw(veCarv.address, 1)).to.be.reverted
         await expect(vault.connect(owner).foundationWithdraw(ZeroAddress, 1)).to.be.reverted
-        await expect(vault.connect(owner).teeWithdraw(alice.address, 1)).to.be.reverted
-        await expect(vault.connect(alice).teeWithdraw(alice.address, 1)).to.be.reverted
-        await expect(vault.connect(service).teeWithdraw(alice.address, 1)).to.be.reverted
 
         await expect(vault.connect(service).rewardsWithdraw(alice.address, E18(249998941))).to.be.reverted
         await expect(vault.connect(owner).rewardsWithdraw(alice.address, E18(1))).to.be.reverted
@@ -42,23 +39,6 @@ describe("Vault", function () {
         await expect(vault.connect(service).rewardsWithdraw(alice.address, E18(200000000))).not.to.be.reverted
         await expect(vault.connect(service).rewardsWithdraw(alice.address, E18(49998940))).not.to.be.reverted
         await expect(vault.connect(service).rewardsWithdraw(alice.address, E18(1))).to.be.reverted
-
-        await expect(vault.connect(service).teeWithdraw(alice.address, 1)).to.be.reverted
-
-        await carv.connect(owner).transfer(alice.address, E18(1000000))
-        await carv.connect(owner).transfer(service.address, E18(1000000))
-
-        await carv.connect(owner).transfer(vault.address, E18(100))
-        await expect(vault.connect(owner).teeDeposit(E18(100))).to.be.reverted
-
-        await carv.connect(alice).transfer(vault.address, E18(100))
-        await expect(vault.connect(alice).teeDeposit(E18(100))).to.be.reverted
-
-        await carv.connect(service).transfer(vault.address, E18(100))
-        await expect(vault.connect(service).teeDeposit(E18(100))).not.to.be.reverted
-
-        await expect(vault.connect(service).teeWithdraw(alice.address, E18(101))).to.be.reverted
-        await expect(vault.connect(service).teeWithdraw(alice.address, E18(100))).not.to.be.reverted
 
     });
 

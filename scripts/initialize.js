@@ -15,9 +15,6 @@ const serviceConfig = {
     nodeMinOnlineDuration: 21600, // 6 hours
     nodeVerifyDuration: 1800,  // 30 minutes
     nodeSlashReward: e18(10) ,  // 10 veCARV
-    minTeeStakeAmount: e18(1e5),  // 100,000 CARV
-    teeSlashAmount: e18(10),      // 10 veCARV
-    teeUnstakeDuration: 21600,   // 6 hours
     minCommissionRateModifyInterval: 604800, // 604800, // 1 week
     nodeMaxMissVerifyCount: 5,
     maxCommissionRate: 10000,  // 100%
