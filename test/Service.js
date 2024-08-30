@@ -210,8 +210,11 @@ describe("Service", function () {
         await carv.approve(vault.address, E18(250000000))
         await vault.rewardsDeposit(CarvTotalRewards)
 
+
         let owner = signers[0]
         let alice = signers[1]
+
+        await proxy.modifySlashRole(owner.address, true)
 
         await nft.mint(alice.address, 1, {code:"", price: 0, tier: 0});
         await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;

@@ -6,8 +6,10 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 contract Adminable is Initializable {
     address public admin;
     mapping(address => bool) public teeRoles;
+    mapping(address => bool) public slashRoles;
 
     event ModifyTeeRole(address tee, bool grant);
+    event ModifySlashRole(address slasher, bool grant);
     event ModifyAdmin(address newAdmin);
 
     function __Adminable_init(address admin_) internal onlyInitializing {
@@ -19,6 +21,11 @@ contract Adminable is Initializable {
         emit ModifyTeeRole(tee, grant);
     }
 
+    function modifySlashRole(address slasher, bool grant) external onlyAdmin {
+        slashRoles[slasher] = grant;
+        emit ModifySlashRole(slasher, grant);
+    }
+
     function modifyAdmin(address newAdmin) external onlyAdmin {
         admin = newAdmin;
         emit ModifyAdmin(newAdmin);
@@ -26,6 +33,11 @@ contract Adminable is Initializable {
 
     modifier onlyTee() {
         require(teeRoles[msg.sender], "Not tee");
+        _;
+    }
+
+    modifier onlySlasher() {
+        require(slashRoles[msg.sender], "Not slasher");
         _;
     }
 

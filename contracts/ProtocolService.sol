@@ -195,7 +195,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         emit NodeClaim(node, msg.sender, rewards);
     }
 
-    function nodeSlash(address node, bytes32 attestationID, uint32 index) external {
+    function nodeSlash(address node, bytes32 attestationID, uint32 index) external onlySlasher {
         Attestation storage attestation = attestations[attestationID];
         require(attestation.deadline < block.timestamp, "Deadline");
 
