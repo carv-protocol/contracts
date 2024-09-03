@@ -169,6 +169,7 @@ describe("Service", function () {
             minCommissionRateModifyInterval: 604800, // 1 week
             nodeMaxMissVerifyCount: 5,
             maxCommissionRate: 10000,  // 100%
+            maxCommissionRateModifyLimitOnce: 500, // 5%
             maxNodeWeights: 100,
         })
 
@@ -202,6 +203,7 @@ describe("Service", function () {
             minCommissionRateModifyInterval: 604800, // 1 week
             nodeMaxMissVerifyCount: 5,
             maxCommissionRate: 10000,  // 100%
+            maxCommissionRateModifyLimitOnce: 500, // 5%
             maxNodeWeights: 100,
         })
     });

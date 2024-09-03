@@ -13,6 +13,7 @@ contract Settings is ISettings, Ownable {
     uint256 public override minCommissionRateModifyInterval;
     uint64 public override nodeMaxMissVerifyCount;
     uint32 public override maxCommissionRate;
+    uint32 public override maxCommissionRateModifyLimitOnce;
     uint16 public override maxNodeWeights;
 
     constructor () Ownable(msg.sender) {}
@@ -29,6 +30,7 @@ contract Settings is ISettings, Ownable {
         minCommissionRateModifyInterval = params.minCommissionRateModifyInterval;
         nodeMaxMissVerifyCount = params.nodeMaxMissVerifyCount;
         maxCommissionRate = params.maxCommissionRate;
+        maxCommissionRateModifyLimitOnce = params.maxCommissionRateModifyLimitOnce;
         maxNodeWeights = params.maxNodeWeights;
 
         emit UpdateSettings(params);

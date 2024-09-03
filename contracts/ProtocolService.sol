@@ -441,6 +441,10 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
             nodeInfo.commissionRateLastModifyAt + ISettings(settings).minCommissionRateModifyInterval() < block.timestamp,
             "Not meet min commission rate modify interval"
         );
+        require(
+            nodeInfo.commissionRate + ISettings(settings).maxCommissionRateModifyLimitOnce() >= commissionRate,
+            "Modify too large at one time"
+        );
         require(commissionRate <= ISettings(settings).maxCommissionRate(), "Value is too large");
         nodeInfo.commissionRate = commissionRate;
         nodeInfo.commissionRateLastModifyAt = block.timestamp;
