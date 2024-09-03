@@ -56,7 +56,7 @@ contract Vault is IVault, AccessControlUpgradeable {
         IERC20(carvToken).approve(veCarvToken, amount);
         IveCarv(veCarvToken).deposit(amount, address(this));
 
-        assets[SERVICE_ROLE][veCarvToken] = amount;
+        assets[SERVICE_ROLE][veCarvToken] += amount;
         emit RewardsDeposit(amount);
     }
 

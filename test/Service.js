@@ -14,7 +14,7 @@ describe("Service", function () {
     it("Tee", async function () {
         let alice = signers[1]
 
-        await expect(proxy.modifyTeeRole(alice.address, true)).not.to.be.reverted;
+        await expect(proxy.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TEE_ROLE")), alice.address)).not.to.be.reverted;
         await expect(proxy.connect(alice).teeReportAttestations(["test"])).not.to.be.reverted;
         await coordinator.callback(1, [123456789])
     });
@@ -77,7 +77,7 @@ describe("Service", function () {
         await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
         await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
 
-        await expect(proxy.modifyTeeRole(owner.address, true)).not.to.be.reverted;
+        await expect(proxy.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TEE_ROLE")), owner.address)).not.to.be.reverted;
         await expect(proxy.teeReportAttestations(["test"])).not.to.be.reverted;
         await coordinator.callback(1, [123456789])
 
@@ -102,7 +102,7 @@ describe("Service", function () {
         await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
         await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
 
-        await expect(proxy.modifyTeeRole(owner.address, true)).not.to.be.reverted;
+        await expect(proxy.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TEE_ROLE")), owner.address)).not.to.be.reverted;
         await expect(proxy.teeReportAttestations(["test"])).not.to.be.reverted;
         await coordinator.callback(1, [123456789])
 
@@ -214,13 +214,13 @@ describe("Service", function () {
         let owner = signers[0]
         let alice = signers[1]
 
-        await proxy.modifySlashRole(owner.address, true)
+        await proxy.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("SLASH_ROLE")), owner.address)
 
         await nft.mint(alice.address, 1, {code:"", price: 0, tier: 0});
         await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
         await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
 
-        await expect(proxy.modifyTeeRole(owner.address, true)).not.to.be.reverted;
+        await expect(proxy.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TEE_ROLE")), owner.address)).not.to.be.reverted;
 
         // ------
         await expect(proxy.teeReportAttestations(["test"])).not.to.be.reverted;

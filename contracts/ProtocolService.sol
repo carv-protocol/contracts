@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Multicall.sol";
 import "./interfaces/IProtocolService.sol";
 import "./interfaces/ICarvVrfCallback.sol";
 import "./interfaces/ICarvVrf.sol";
 import "./interfaces/ISettings.sol";
 import "./interfaces/IVault.sol";
-import "./Adminable.sol";
 
-contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multicall {
+contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpgradeable, MulticallUpgradeable {
 
+    bytes32 public constant TEE_ROLE = keccak256("TEE_ROLE");
+    bytes32 public constant SLASH_ROLE = keccak256("SLASH_ROLE");
+    uint256 public constant MAX_SIGNATURE_DURATION = 6 hours;
     uint32 public constant MAX_UINT32 = 4294967295; // type(uint32).max;
     uint32 public constant CHOOSE_NODES_MAX = 200;
 
@@ -48,7 +51,9 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         carvToken = carvToken_;
         carvNft = carvNft_;
         vault= vault_;
-        __Adminable_init(msg.sender);
+        __Multicall_init();
+        __AccessControl_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         eip712DomainHash = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId)"),
@@ -59,17 +64,17 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         );
     }
 
-    function updateSettingsAddress(address settings_) external onlyAdmin {
+    function updateSettingsAddress(address settings_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         settings = settings_;
         emit UpdateSettingsAddress(settings_);
     }
 
-    function updateVrfAddress(address carvVrf_) external onlyAdmin {
+    function updateVrfAddress(address carvVrf_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         carvVrf = carvVrf_;
         emit UpdateVrfAddress(carvVrf_);
     }
 
-    function teeReportAttestations(string[] memory attestationInfos) external onlyTee {
+    function teeReportAttestations(string[] memory attestationInfos) external onlyRole(TEE_ROLE) {
         uint256 requestId = ICarvVrf(carvVrf).requestRandomWords();
 
         bytes32[] memory attestationIDs = new bytes32[](attestationInfos.length);
@@ -195,7 +200,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
         emit NodeClaim(node, msg.sender, rewards);
     }
 
-    function nodeSlash(address node, bytes32 attestationID, uint32 index) external onlySlasher {
+    function nodeSlash(address node, bytes32 attestationID, uint32 index) external onlyRole(SLASH_ROLE) {
         Attestation storage attestation = attestations[attestationID];
         require(attestation.deadline < block.timestamp, "Deadline");
 
@@ -314,6 +319,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     }
 
     function redelegate(uint256 tokenID, address to) external onlyNftOwner(tokenID) {
+        require(to != address(0), "Empty delegated address");
         address old = delegation[tokenID];
         require(old != address(0) && old != to, "Cannot redelegate or redelegate to same one");
         require(delegationWeights[to] < ISettings(settings).maxNodeWeights(), "Max node weights");
@@ -499,11 +505,14 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, Adminable, Multi
     function _checkSignature(
         uint256 expiredAt, bytes32 hashStruct, address signer, uint8 v, bytes32 r, bytes32 s
     ) internal view {
-        require(expiredAt >= block.timestamp, "Expired");
+        require(expiredAt >= block.timestamp && expiredAt <= block.timestamp + MAX_SIGNATURE_DURATION, "Invalid expiredAt");
         bytes32 digest = keccak256(
             abi.encodePacked("\x19\x01", eip712DomainHash, hashStruct)
         );
+
+        require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "Invalid signature S");
         require(signer == ecrecover(digest, v, r, s), "signer not match");
+        require(signer != address(0), "Invalid signature");
     }
 
     function _checkNodeInfos(bytes32 attestationID, address node, uint32 index) internal view {

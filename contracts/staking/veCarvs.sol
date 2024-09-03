@@ -76,7 +76,7 @@ contract veCarvs is Settings, Multicall {
     }
 
     function deposit(uint256 amount, uint256 duration) external {
-        require(duration % DURATION_PER_EPOCH == 0, "invalid duration");
+        require(duration <= type(uint16).max * DURATION_PER_EPOCH && duration % DURATION_PER_EPOCH == 0, "invalid duration");
         require(amount >= minStakingAmount, "invalid amount");
 
         DurationInfo memory durationInfo = supportedDurations[uint16(duration/DURATION_PER_EPOCH)];
