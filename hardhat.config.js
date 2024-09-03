@@ -48,6 +48,11 @@ module.exports = {
       url: process.env.API_KEY_URL_BASE_TESTNET,
       accounts: [process.env.BASE_TEST_PRIVATE_KEY],
       gasPrice: 10000000,
-    }
+    },
+    base_oft: {
+      url: process.env.API_KEY_URL_BASE_MAINNET,
+      accounts: [process.env.OFT_PRIVATE_KEY],
+      gasPrice: 10000000,
+    },
   }
 };

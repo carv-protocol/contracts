@@ -2,16 +2,14 @@ const hre = require("hardhat");
 require("dotenv").config();
 
 const oappAddress = '0xc08Cd26474722cE93F4D0c34D16201461c10AA8C';
-const sendLibAddress = '0x975bcD720be66659e3EB3C0e4F1866a3020E493A';
-const receiveLibAddress = '0x7B9E184e07a6EE1aC23eAe0fe8D6Be2f663f05e6'
+const sendLibAddress = '0xB5320B0B3a13cC860893E2Bd79FCd7e13484Dda2';
+const receiveLibAddress = '0xc70AB6f32772f59fBfc23889Caf4Ba3376C84bAf'
 const endpointAddress = '0x1a44076050125825900e736c501f859c50fE728c'
-const lzDVNAddress = '0x2f55C492897526677C5B68fb199ea31E2c126416'
-const nmDVNAddress = '0xa7b5189bcA84Cd304D8553977c7C614329750d99'
-const executorAddress = '0x31CAe3B7fB82d847621859fb1585353c5720660D'
+const lzDVNAddress = '0x9e059a54699a285714207b43b055483e78faac25'
+const nmDVNAddress = '0xcd37ca043f8479064e10635020c65ffc005d36f6'
+const executorAddress = '0x2CCA08ae69E0C44b18a57Ab2A87644234dAebaE4'
 
-const SolanaEid = 30168
-const EthereumEid = 30101
-const BaseEid = 30184
+const ArbitrumEid = 30110
 
 async function main() {
     const [signer] = await hre.ethers.getSigners();
@@ -21,7 +19,7 @@ async function main() {
     const endpointContract = new hre.ethers.Contract(endpointAddress, ENDPOINT_ABI, signer);
 
     const setConfigParamExecutor = {
-        eid: BaseEid,
+        eid: ArbitrumEid,
         configType: 1,
         config: abiCoder.encode(
             ["tuple(uint32 maxMessageSize,address executor)"],
@@ -32,7 +30,7 @@ async function main() {
     }
 
     const setConfigParamUln = {
-        eid: BaseEid,
+        eid: ArbitrumEid,
         configType: 2,
         config: abiCoder.encode(
             ["tuple(uint64 confirmations,uint8 requiredDVNCount,uint8 optionalDVNCount,uint8 optionalDVNThreshold,address[] requiredDVNs,address[] optionalDVNs)"],
