@@ -8,6 +8,7 @@ import "./Settings.sol";
 contract veCarvs is Settings, Multicall {
     struct Position {
         address user;
+        bool finalized;
         uint256 balance;
         uint256 end;
         uint256 share;
@@ -34,7 +35,7 @@ contract veCarvs is Settings, Multicall {
 
     /*---------- Global algorithm parameters ----------*/
     // The contract will define the length of min time period here.
-    uint256 public constant DURATION_PER_EPOCH = 1 days;
+    uint256 public constant DURATION_PER_EPOCH = 1 hours;
     uint256 public initialTimestamp;
     // epoch -> delta slope
     mapping(uint32 => int256) public slopeChanges;
@@ -52,7 +53,8 @@ contract veCarvs is Settings, Multicall {
     /*---------- event ----------*/
     event Deposit(uint64 indexed positionID, address indexed user, uint256 amount,
         uint256 begin, uint256 duration, uint256 share, uint256 debt);
-    event Withdraw(uint64 indexed positionID, uint256 reward);
+    event Finalize(uint64 indexed positionID, uint256 reward);
+    event Withdraw(uint64 indexed positionID);
     event Claim(uint64 indexed positionID, uint256 reward);
     event UpdateShare(uint256 accumulatedRewardPerShare);
     event NewPoint(address user, uint256 bias, int256 slope, uint32 epochIndex);
@@ -91,7 +93,7 @@ contract veCarvs is Settings, Multicall {
         uint256 debt = (share * accumulatedRewardPerShare) / PRECISION;
 
         positionIndex++;
-        positions[positionIndex] = Position(msg.sender, amount, beginTimestamp + duration, share, debt);
+        positions[positionIndex] = Position(msg.sender, false, amount, beginTimestamp + duration, share, debt);
         totalShare += share;
 
         checkEpoch(msg.sender);
@@ -102,21 +104,20 @@ contract veCarvs is Settings, Multicall {
 
     function withdraw(uint64 positionID) external {
         Position storage position = positions[positionID];
+
+        if (!position.finalized) {
+            finalize(positionID);
+        }
+
         require(position.user == msg.sender, "user not match or already withdrawn");
-        require(position.end <= block.timestamp, "locked");
-
-        _updateShare();
-
-        uint256 pendingReward = (position.share * accumulatedRewardPerShare) / PRECISION - position.debt;
-        IERC20(token).transfer(msg.sender, position.balance+pendingReward);
-        rewardTokenAmount -= pendingReward;
-        totalShare -= position.share;
+        IERC20(token).transfer(msg.sender, position.balance);
         delete positions[positionID];
-        emit Withdraw(positionID, pendingReward);
+        emit Withdraw(positionID);
     }
 
     function claim(uint64 positionID) external {
         Position storage position = positions[positionID];
+        require(!position.finalized, "already finalized");
         require(position.user == msg.sender, "user not match or already withdrawn");
 
         _updateShare();
@@ -136,6 +137,21 @@ contract veCarvs is Settings, Multicall {
 
     function totalSupply() external view returns (uint256) {
         return totalSupplyAt(block.timestamp);
+    }
+
+    function finalize(uint64 positionID) public {
+        Position storage position = positions[positionID];
+        require(!position.finalized, "already finalized");
+        require(position.end <= block.timestamp, "locked");
+
+        _updateShare();
+
+        uint256 pendingReward = (position.share * accumulatedRewardPerShare) / PRECISION - position.debt;
+        rewardTokenAmount -= pendingReward;
+        totalShare -= position.share;
+        position.finalized = true;
+        position.balance += pendingReward;
+        emit Finalize(positionID, pendingReward);
     }
 
     function checkEpoch(address withUser) public {
