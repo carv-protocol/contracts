@@ -46,7 +46,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
     mapping(address => mapping(uint32 => uint32)) public nodeDailyActive;
 
     function initialize(
-        address carvToken_, address carvNft_, address vault_, uint256 chainID
+        address carvToken_, address carvNft_, address vault_
     ) public initializer {
         carvToken = carvToken_;
         carvNft = carvNft_;
@@ -59,7 +59,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
                 keccak256("EIP712Domain(string name,string version,uint256 chainId)"),
                 keccak256(bytes("ProtocolService")),
                 keccak256(bytes("1.0.0")),
-                chainID
+                block.chainid
             )
         );
     }
