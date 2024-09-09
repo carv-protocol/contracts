@@ -41,28 +41,28 @@ describe("Service", function () {
 
         let currentTimestamp = await time.latest()
 
-        let signature = await signNodeEnter(alice, 42161, alice.address, currentTimestamp)
+        let signature = await signNodeEnter(alice, 31337, alice.address, currentTimestamp)
         await expect(proxy.nodeEnterWithSignature(
             alice.address, currentTimestamp, alice.address, signature.v, signature.r, signature.s
         )).to.be.reverted
 
         currentTimestamp += 600
-        signature = await signNodeEnter(alice, 42161, alice.address, currentTimestamp)
+        signature = await signNodeEnter(alice, 31337, alice.address, currentTimestamp)
         await expect(proxy.nodeEnterWithSignature(
             alice.address, currentTimestamp, alice.address, signature.v, signature.r, signature.s
         )).not.to.be.reverted
 
-        signature = await signNodeExit(alice, 42161, currentTimestamp)
+        signature = await signNodeExit(alice, 31337, currentTimestamp)
         await expect(proxy.nodeExitWithSignature(
             currentTimestamp, alice.address, signature.v, signature.r, signature.s
         )).not.to.be.reverted
 
-        signature = await signModifyCommission(alice, 42161, 100, currentTimestamp)
+        signature = await signModifyCommission(alice, 31337, 100, currentTimestamp)
         await expect(proxy.nodeModifyCommissionRateWithSignature(
             100, currentTimestamp, alice.address, signature.v, signature.r, signature.s
         )).not.to.be.reverted
 
-        signature = await signSetRewardClaimer(alice, 42161, alice.address, currentTimestamp)
+        signature = await signSetRewardClaimer(alice, 31337, alice.address, currentTimestamp)
         await expect(proxy.nodeSetRewardClaimerWithSignature(
             alice.address, currentTimestamp, alice.address, signature.v, signature.r, signature.s
         )).not.to.be.reverted
@@ -169,6 +169,7 @@ describe("Service", function () {
             minCommissionRateModifyInterval: 604800, // 1 week
             nodeMaxMissVerifyCount: 5,
             maxCommissionRate: 10000,  // 100%
+            maxCommissionRateModifyLimitOnce: 500, // 5%
             maxNodeWeights: 100,
         })
 
@@ -202,6 +203,7 @@ describe("Service", function () {
             minCommissionRateModifyInterval: 604800, // 1 week
             nodeMaxMissVerifyCount: 5,
             maxCommissionRate: 10000,  // 100%
+            maxCommissionRateModifyLimitOnce: 500, // 5%
             maxNodeWeights: 100,
         })
     });

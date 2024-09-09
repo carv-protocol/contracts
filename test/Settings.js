@@ -13,6 +13,7 @@ describe("Settings", function () {
             minCommissionRateModifyInterval: 604800, // 1 week
             nodeMaxMissVerifyCount: 5,
             maxCommissionRate: 10000,
+            maxCommissionRateModifyLimitOnce: 500, // 5%
             maxNodeWeights: 100,
         })).not.to.be.reverted;
 

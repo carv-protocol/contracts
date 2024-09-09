@@ -14,7 +14,7 @@ contract veCarvToken is AccessControl, ERC20, Multicall, IveCarv {
     uint256 constant CLAIM_RULE_PRECISION = 10000;
 
     uint64 public withdrawIndex;
-    address public carvToken;
+    address public immutable carvToken;
     address public treasury;
     mapping(uint64 => WithdrawInfo) public withdrawInfos;
     mapping(uint256 => uint32) public claimRules;

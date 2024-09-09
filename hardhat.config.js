@@ -19,15 +19,15 @@ module.exports = {
   },
 
   networks: {
-    opbnb: {
-      url: process.env.API_KEY_URL_OPBNB,
-      accounts: [process.env.PRIVATE_KEY],
+    opbnb_testnet: {
+      url: process.env.API_KEY_URL_OPBNB_TESTNET,
+      accounts: [process.env.TEST_PRIVATE_KEY],
       gasPrice: 1000000,
     },
-    arb: {
-      url: process.env.API_KEY_URL_ARB,
-      accounts: [process.env.PRIVATE_KEY],
-      gasPrice: 100000000,
+    arb_testnet: {
+      url: process.env.API_KEY_URL_ARB_SEPOLIA,
+      accounts: [process.env.TEST_PRIVATE_KEY],
+      gasPrice: 150000000,
     },
     arb_nft: {
       url: process.env.API_KEY_URL_ARB_ONE,

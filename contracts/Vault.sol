@@ -26,6 +26,7 @@ contract Vault is IVault, AccessControlUpgradeable {
         carvToken = carv;
         veCarvToken = veCarv;
         startTimestamp = startTimestamp_;
+        __AccessControl_init();
         _grantRole(FOUNDATION_ROLE, msg.sender);
         _grantRole(SERVICE_ROLE, service);
     }

@@ -24,6 +24,7 @@ interface ISettings {
         uint256 minCommissionRateModifyInterval;
         uint64 nodeMaxMissVerifyCount;
         uint32 maxCommissionRate;
+        uint32 maxCommissionRateModifyLimitOnce;
         uint16 maxNodeWeights;
     }
 
@@ -44,5 +45,6 @@ interface ISettings {
     function minCommissionRateModifyInterval() external view returns (uint256);
     function nodeMaxMissVerifyCount() external view returns (uint64);
     function maxCommissionRate() external view returns (uint32);
+    function maxCommissionRateModifyLimitOnce() external view returns (uint32);
     function maxNodeWeights() external view returns (uint16);
 }

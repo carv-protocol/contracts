@@ -176,7 +176,7 @@ exports.deployAll = async function () {
     proxy = await Proxy.deploy(service.address, signers[0].address, ethers.utils.toUtf8Bytes(""))
     nft = await CarvNft.deploy("CarvNft", "CarvNft");
     proxy = ProtocolService.attach(proxy.address)
-    await proxy.initialize(carv.address, nft.address, vault.address, 42161)
+    await proxy.initialize(carv.address, nft.address, vault.address)
 
     await veCarv.setTreasuryAddress(vault.address)
     await veCarv.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("DEPOSITOR_ROLE")), vault.address);
@@ -191,6 +191,7 @@ exports.deployAll = async function () {
         minCommissionRateModifyInterval: 604800, // 1 week
         nodeMaxMissVerifyCount: 5,
         maxCommissionRate: 10000,  // 100%
+        maxCommissionRateModifyLimitOnce: 500, // 5%
         maxNodeWeights: 100,
     })
 

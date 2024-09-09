@@ -89,12 +89,12 @@ describe("Gas", function () {
 
         let attestationID = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(attestation))
 
-        let signature0 = await signVerification(signers[1], 42161, attestationID, 0, 1)
-        let signature1 = await signVerification(signers[2], 42161, attestationID, 0, 2)
-        let signature2 = await signVerification(signers[3], 42161, attestationID, 0, 3)
-        let signature3 = await signVerification(signers[4], 42161, attestationID, 0, 4)
-        let signature4 = await signVerification(signers[5], 42161, attestationID, 0, 5)
-        let signature = await signVerification(signers[6], 42161, attestationID, 0, 6)
+        let signature0 = await signVerification(signers[1], 31337, attestationID, 0, 1)
+        let signature1 = await signVerification(signers[2], 31337, attestationID, 0, 2)
+        let signature2 = await signVerification(signers[3], 31337, attestationID, 0, 3)
+        let signature3 = await signVerification(signers[4], 31337, attestationID, 0, 4)
+        let signature4 = await signVerification(signers[5], 31337, attestationID, 0, 5)
+        let signature = await signVerification(signers[6], 31337, attestationID, 0, 6)
 
         await proxy.nodeReportVerificationBatch(
             attestationID,
