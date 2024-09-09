@@ -59,5 +59,10 @@ module.exports = {
       accounts: [process.env.OFT_PRIVATE_KEY_TEST],
       gasPrice: 80000000,
     },
+    linea_oft: {
+      url: process.env.API_KEY_URL_LINEA_MAINNET,
+      accounts: [process.env.OFT_PRIVATE_KEY],
+      gasPrice: 80000000,
+    },
   }
 };

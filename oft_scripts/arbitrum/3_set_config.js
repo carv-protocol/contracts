@@ -12,6 +12,7 @@ const executorAddress = '0x31CAe3B7fB82d847621859fb1585353c5720660D'
 const SolanaEid = 30168
 const EthereumEid = 30101
 const BaseEid = 30184
+const LineaEid = 30183
 
 async function main() {
     const [signer] = await hre.ethers.getSigners();
@@ -21,7 +22,7 @@ async function main() {
     const endpointContract = new hre.ethers.Contract(endpointAddress, ENDPOINT_ABI, signer);
 
     const setConfigParamExecutor = {
-        eid: BaseEid,
+        eid: LineaEid,
         configType: 1,
         config: abiCoder.encode(
             ["tuple(uint32 maxMessageSize,address executor)"],
@@ -32,7 +33,7 @@ async function main() {
     }
 
     const setConfigParamUln = {
-        eid: BaseEid,
+        eid: LineaEid,
         configType: 2,
         config: abiCoder.encode(
             ["tuple(uint64 confirmations,uint8 requiredDVNCount,uint8 optionalDVNCount,uint8 optionalDVNThreshold,address[] requiredDVNs,address[] optionalDVNs)"],

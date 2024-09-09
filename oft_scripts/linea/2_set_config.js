@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 require("dotenv").config();
 
-const oappAddress = '0xd6B3e6A2DedC97dDE9F3Fc50141525a3B7672C47';
+const oappAddress = '0xc08Cd26474722cE93F4D0c34D16201461c10AA8C';
 const sendLibAddress = '0x32042142DD551b4EbE17B6FEd53131dd4b4eEa06';
 const receiveLibAddress = '0xE22ED54177CE1148C557de74E4873619e6c6b205'
 const endpointAddress = '0x1a44076050125825900e736c501f859c50fE728c'
