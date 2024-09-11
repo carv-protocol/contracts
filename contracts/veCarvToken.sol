@@ -31,8 +31,8 @@ contract veCarvToken is AccessControl, ERC20, Multicall, IveCarv {
     }
 
     function deposit(uint256 amount, address receiver) external onlyRole(DEPOSITOR_ROLE) {
-        IERC20(carvToken).transferFrom(msg.sender, address(this), amount);
         _mint(receiver, amount);
+        IERC20(carvToken).transferFrom(msg.sender, address(this), amount);
         emit Deposit(msg.sender, receiver, amount);
     }
 

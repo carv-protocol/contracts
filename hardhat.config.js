@@ -24,6 +24,11 @@ module.exports = {
       accounts: [process.env.TEST_PRIVATE_KEY],
       gasPrice: 1000000,
     },
+    opbnb: {
+      url: process.env.API_KEY_URL_OPBNB,
+      accounts: [process.env.TEST_PRIVATE_KEY],
+      gasPrice: 1000000,
+    },
     arb_testnet: {
       url: process.env.API_KEY_URL_ARB_SEPOLIA,
       accounts: [process.env.TEST_PRIVATE_KEY],

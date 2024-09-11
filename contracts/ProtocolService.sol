@@ -308,6 +308,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
     }
 
     function delegate(uint256 tokenID, address to) external onlyNftOwner(tokenID) {
+        require(to != address(0), "Empty delegated address");
         require(delegation[tokenID] == address(0), "Already delegate");
         require(delegationWeights[to] < ISettings(settings).maxNodeWeights(), "Max node weights");
 
