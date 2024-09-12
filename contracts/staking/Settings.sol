@@ -23,9 +23,11 @@ contract Settings is Initializable {
 
     // Users' depositing duration can only be within a limited range
     mapping(uint16 => DurationInfo) public supportedDurations;
+    mapping(uint16 => DurationInfo) public specialDurations;
 
     event UpdateSettings(SettingParams params);
     event ModifySupportedDurations(uint16 duration, bool activate, uint32 rewardWeight, uint32 stakingMultiplier);
+    event ModifySpecialDurations(uint16 duration, bool activate, uint32 rewardWeight, uint32 stakingMultiplier);
     event ModifyAdmin(address newAdmin);
 
     modifier onlyAdmin() {
@@ -55,6 +57,12 @@ contract Settings is Initializable {
         _modifySupportedDurations(duration, activate, rewardWeight, stakingMultiplier);
     }
 
+    function modifySpecialDurations(
+        uint16 duration, bool activate, uint32 rewardWeight, uint32 stakingMultiplier
+    ) external onlyAdmin {
+        _modifySpecialDurations(duration, activate, rewardWeight, stakingMultiplier);
+    }
+
     function modifyAdmin(address newAdmin) external onlyAdmin {
         admin = newAdmin;
         emit ModifyAdmin(newAdmin);
@@ -65,6 +73,13 @@ contract Settings is Initializable {
     ) internal {
         supportedDurations[duration] = DurationInfo(activate, rewardWeight, stakingMultiplier);
         emit ModifySupportedDurations(duration, activate, rewardWeight, stakingMultiplier);
+    }
+
+    function _modifySpecialDurations(
+        uint16 duration, bool activate, uint32 rewardWeight, uint32 stakingMultiplier
+    ) internal {
+        specialDurations[duration] = DurationInfo(activate, rewardWeight, stakingMultiplier);
+        emit ModifySpecialDurations(duration, activate, rewardWeight, stakingMultiplier);
     }
 }
 

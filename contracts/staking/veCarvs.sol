@@ -1,25 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-import "@openzeppelin/contracts/utils/Multicall.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./Settings.sol";
+import "../interfaces/IveCarvs.sol";
 
-contract veCarvs is Settings, Multicall {
-    struct Position {
-        address user;
-        bool finalized;
-        uint256 balance;
-        uint256 end;
-        uint256 share;
-        uint256 debt;
-    }
+contract veCarvs is Settings, AccessControlUpgradeable, MulticallUpgradeable, IveCarvs {
 
-    struct EpochPoint {
-        uint256 bias;
-        int256 slope;
-        uint32 epochIndex;
-    }
+    bytes32 public constant SPECIAL_DEPOSIT_ROLE = keccak256("SPECIAL_DEPOSIT_ROLE");
 
     /*---------- token infos ----------*/
     address public token;
@@ -50,17 +40,6 @@ contract veCarvs is Settings, Multicall {
     uint64 public positionIndex;
     mapping(uint64 => Position) public positions;
 
-    /*---------- event ----------*/
-    event DepositRewardToken(address indexed depositor, uint256 amount);
-    event Deposit(uint64 indexed positionID, address indexed user, uint256 amount,
-        uint256 begin, uint256 duration, uint256 share, uint256 debt);
-    event Finalize(uint64 indexed positionID, uint256 reward);
-    event Withdraw(uint64 indexed positionID);
-    event Claim(uint64 indexed positionID, uint256 reward);
-    event UpdateShare(uint256 accumulatedRewardPerShare);
-    event NewPoint(address user, uint256 bias, int256 slope, uint32 epochIndex);
-    event UpdateCurrentPoint(address user, uint256 slope, uint256 initialBias, uint32 endEpoch);
-
     function initialize(
         string memory name_, string memory symbol_, address carvToken
     ) public initializer {
@@ -70,6 +49,9 @@ contract veCarvs is Settings, Multicall {
         initialTimestamp = (block.timestamp / DURATION_PER_EPOCH) * DURATION_PER_EPOCH;
         _newPoint(address(0), EpochPoint(0, 0, 0));
         __Settings_init(msg.sender);
+        __Multicall_init();
+        __AccessControl_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     function depositRewardToken(uint256 amount) external {
@@ -84,23 +66,14 @@ contract veCarvs is Settings, Multicall {
         require(amount >= minStakingAmount, "invalid amount");
 
         DurationInfo memory durationInfo = supportedDurations[uint16(duration/DURATION_PER_EPOCH)];
-        require(durationInfo.active, "invalid duration");
+        _deposit(msg.sender, amount, duration, durationInfo);
+    }
 
-        _updateShare();
+    function depositForSpecial(address user, uint256 amount, uint256 duration) external onlyRole(SPECIAL_DEPOSIT_ROLE) {
+        require(duration <= type(uint16).max * DURATION_PER_EPOCH && duration % DURATION_PER_EPOCH == 0, "invalid duration");
 
-        uint256 beginTimestamp = (block.timestamp / DURATION_PER_EPOCH) * DURATION_PER_EPOCH;
-        uint256 share = amount * durationInfo.rewardWeight / DURATION_INFO_DECIMALS;
-        uint256 debt = (share * accumulatedRewardPerShare) / PRECISION;
-
-        positionIndex++;
-        positions[positionIndex] = Position(msg.sender, false, amount, beginTimestamp + duration, share, debt);
-        totalShare += share;
-
-        checkEpoch(msg.sender);
-        _updateCurrentPoint(msg.sender, durationInfo.stakingMultiplier, amount, beginTimestamp, duration);
-
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
-        emit Deposit(positionIndex, msg.sender, amount, beginTimestamp, duration, share, debt);
+        DurationInfo memory durationInfo = specialDurations[uint16(duration/DURATION_PER_EPOCH)];
+        _deposit(user, amount, duration, durationInfo);
     }
 
     function withdraw(uint64 positionID) external {
@@ -190,6 +163,25 @@ contract veCarvs is Settings, Multicall {
 
     function decimals() public pure returns (uint8) {
         return 18;
+    }
+
+    function _deposit(address user, uint256 amount, uint256 duration, DurationInfo memory durationInfo) internal {
+        require(durationInfo.active, "invalid duration");
+        _updateShare();
+
+        uint256 beginTimestamp = (block.timestamp / DURATION_PER_EPOCH) * DURATION_PER_EPOCH;
+        uint256 share = amount * durationInfo.rewardWeight / DURATION_INFO_DECIMALS;
+        uint256 debt = (share * accumulatedRewardPerShare) / PRECISION;
+
+        positionIndex++;
+        positions[positionIndex] = Position(user, false, amount, beginTimestamp + duration, share, debt);
+        totalShare += share;
+
+        checkEpoch(user);
+        _updateCurrentPoint(user, durationInfo.stakingMultiplier, amount, beginTimestamp, duration);
+
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        emit Deposit(positionIndex, user, amount, beginTimestamp, duration, share, debt);
     }
 
     function _updateShare() internal {
