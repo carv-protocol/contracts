@@ -35,7 +35,7 @@ contract veCarvs is Settings, Multicall {
 
     /*---------- Global algorithm parameters ----------*/
     // The contract will define the length of min time period here.
-    uint256 public constant DURATION_PER_EPOCH = 1 hours;
+    uint256 public constant DURATION_PER_EPOCH = 1 days;
     uint256 public initialTimestamp;
     // epoch -> delta slope
     mapping(uint32 => int256) public slopeChanges;
@@ -51,6 +51,7 @@ contract veCarvs is Settings, Multicall {
     mapping(uint64 => Position) public positions;
 
     /*---------- event ----------*/
+    event DepositRewardToken(address indexed depositor, uint256 amount);
     event Deposit(uint64 indexed positionID, address indexed user, uint256 amount,
         uint256 begin, uint256 duration, uint256 share, uint256 debt);
     event Finalize(uint64 indexed positionID, uint256 reward);
@@ -73,8 +74,9 @@ contract veCarvs is Settings, Multicall {
 
     function depositRewardToken(uint256 amount) external {
         require(amount > 0, "invalid amount");
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
         rewardTokenAmount += amount;
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        emit DepositRewardToken(msg.sender, amount);
     }
 
     function deposit(uint256 amount, uint256 duration) external {
@@ -83,8 +85,6 @@ contract veCarvs is Settings, Multicall {
 
         DurationInfo memory durationInfo = supportedDurations[uint16(duration/DURATION_PER_EPOCH)];
         require(durationInfo.active, "invalid duration");
-
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
 
         _updateShare();
 
@@ -99,6 +99,7 @@ contract veCarvs is Settings, Multicall {
         checkEpoch(msg.sender);
         _updateCurrentPoint(msg.sender, durationInfo.stakingMultiplier, amount, beginTimestamp, duration);
 
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
         emit Deposit(positionIndex, msg.sender, amount, beginTimestamp, duration, share, debt);
     }
 
@@ -124,9 +125,9 @@ contract veCarvs is Settings, Multicall {
 
         uint256 pendingReward = (position.share * accumulatedRewardPerShare) / PRECISION - position.debt;
         if (pendingReward > 0) {
-            IERC20(token).transfer(msg.sender, pendingReward);
             rewardTokenAmount -= pendingReward;
             position.debt = (position.share * accumulatedRewardPerShare) / PRECISION;
+            IERC20(token).transfer(msg.sender, pendingReward);
             emit Claim(positionID, pendingReward);
         }
     }
