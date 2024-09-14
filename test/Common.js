@@ -131,6 +131,13 @@ exports.deployNft = async function () {
     return [owner, alice, bob, cindy, nft]
 }
 
+exports.deploySBT = async function () {
+    const [owner, alice, bob, cindy] = await ethers.getSigners();
+    const SBT = await ethers.getContractFactory("SBT");
+    let sbt = await SBT.deploy("SBT", "SBT");
+    return [owner, alice, bob, cindy, sbt]
+}
+
 exports.deployVault = async function () {
     const [owner, service, alice] = await ethers.getSigners();
 

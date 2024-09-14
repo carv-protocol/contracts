@@ -5,11 +5,13 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IveCarvs.sol";
+import "../interfaces/ISBT.sol";
 
 contract Airdrop01 is Ownable {
     bytes32 public merkleRoot;
     address public carv;
     address public veCarvs;
+    address public sbt;
     mapping(address => bool) public claimed;
 
     event Claimed(address user, uint256 amount);
@@ -17,10 +19,11 @@ contract Airdrop01 is Ownable {
     event Deposit(address depositer, uint256 amount);
     event Withdraw(address withdrawer, uint256 amount);
 
-    constructor(bytes32 merkleRoot_, address carv_, address veCarvs_) Ownable(msg.sender) {
+    constructor(bytes32 merkleRoot_, address carv_, address veCarvs_, address sbt_) Ownable(msg.sender) {
         merkleRoot = merkleRoot_;
         carv = carv_;
         veCarvs = veCarvs_;
+        sbt = sbt_;
         IERC20(carv).approve(veCarvs_, type(uint256).max);
     }
 
@@ -51,6 +54,7 @@ contract Airdrop01 is Ownable {
     function claimForStaking(uint256 amount, uint256 duration, bytes32[] calldata merkleProof) external {
         checkMerkleProof(amount, merkleProof);
         IveCarvs(veCarvs).depositForSpecial(msg.sender, amount, duration);
+        ISBT(sbt).authorize(msg.sender);
         emit ClaimedForStaking(msg.sender, amount, duration);
     }
 
