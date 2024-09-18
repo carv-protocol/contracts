@@ -2,7 +2,7 @@ const fs = require("fs");
 
 const Contracts = ["CarvNft", "CarvToken", "veCarvToken", "Settings", "Vault", "ProtocolService"]
 const ContractsStaking = ["veCarvs"]
-const ContractsAirdrop = ["Airdrop01", "Airdrop02"]
+const ContractsAirdrop = ["Airdrop01", "Airdrop02", "SBT"]
 
 function genAbi() {
     fs.access("./artifacts/contracts", (err) => {
