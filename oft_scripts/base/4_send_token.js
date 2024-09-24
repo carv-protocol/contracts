@@ -1,8 +1,8 @@
 const hre = require("hardhat");
 
-const tokenAddr = ""
+const tokenAddr = "0xc08Cd26474722cE93F4D0c34D16201461c10AA8C"
 
-const receiver = "0x000000000000000000000000Cfce99eE8630fe51974c9a94f1d9153e9F656E81"
+const receiver = "0x000000000000000000000000B61D971Bc04Eff621eB4D69f8D2b9672FE644277"
 const ArbitrumEid = 30110
 
 async function main() {

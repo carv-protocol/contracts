@@ -16,7 +16,7 @@ async function main() {
     console.log(`🔑Owner public key is: ${account.publicKey.toBase58()}`,);
     console.log(`🔑Token public key is: ${TokenPubKey.toBase58()}`,);
 
-    const peer = {dstEid: 30101, peerAddress: addressToBytes32('0xc08Cd26474722cE93F4D0c34D16201461c10AA8C')};
+    const peer = {dstEid: 30110, peerAddress: addressToBytes32('0xc08Cd26474722cE93F4D0c34D16201461c10AA8C')};
 
     let ataAccount = await getOrCreateAssociatedTokenAccount(
         MainNetConn,
@@ -29,7 +29,7 @@ async function main() {
         TOKEN_PROGRAM_ID,
     )
 
-    const receiver = addressToBytes32('');
+    const receiver = addressToBytes32('0xB61D971Bc04Eff621eB4D69f8D2b9672FE644277');
     // 10 CARV
     const amountToSend = 10_000_000n;
 
@@ -41,7 +41,7 @@ async function main() {
         amountToSend,
         amountToSend,
         // Set to zero cuz it will be added to the previous createSetEnforcedOptionsIx value
-        Options.newOptions().addExecutorLzReceiveOption(0, 0).toBytes(),
+        Options.newOptions().toBytes(), //.addExecutorLzReceiveOption(0, 0).toBytes(),
         Array.from(receiver),
     );
 
@@ -55,7 +55,7 @@ async function main() {
             amountToSend,
             amountToSend,
             // ditto
-            Options.newOptions().addExecutorLzReceiveOption(0, 0).toBytes(),
+            Options.newOptions().toBytes(),//.addExecutorLzReceiveOption(0, 0).toBytes(),
             Array.from(receiver),
             fee.nativeFee
         ),

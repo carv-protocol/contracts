@@ -42,12 +42,12 @@ module.exports = {
     arb_oft: {
       url: process.env.API_KEY_URL_ARB_ONE,
       accounts: [process.env.OFT_PRIVATE_KEY],
-      gasPrice: 15000000,
+      gasPrice: 12000000,
     },
     eth_oft: {
       url: process.env.API_KEY_URL_ETH_MAINNET,
       accounts: [process.env.OFT_PRIVATE_KEY],
-      gasPrice: 12000000000,
+      gasPrice: 20000000000,
     },
     base_testnet: {
       url: process.env.API_KEY_URL_BASE_TESTNET,
@@ -67,7 +67,7 @@ module.exports = {
     linea_oft: {
       url: process.env.API_KEY_URL_LINEA_MAINNET,
       accounts: [process.env.OFT_PRIVATE_KEY],
-      gasPrice: 80000000,
+      gasPrice: 120000000,
     },
   }
 };
