@@ -312,6 +312,9 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
         require(delegation[tokenID] == address(0), "Already delegate");
         require(delegationWeights[to] < ISettings(settings).maxNodeWeights(), "Max node weights");
 
+        _adjustNodeDailyActive(to, true);
+        confirmNodeRewards(to);
+
         delegation[tokenID] = to;
         delegationWeights[to] += 1;
 
@@ -324,6 +327,11 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
         address old = delegation[tokenID];
         require(old != address(0) && old != to, "Cannot redelegate or redelegate to same one");
         require(delegationWeights[to] < ISettings(settings).maxNodeWeights(), "Max node weights");
+
+        _adjustNodeDailyActive(old, false);
+        _adjustNodeDailyActive(to, true);
+        confirmNodeRewards(old);
+        confirmNodeRewards(to);
 
         delegation[tokenID] = to;
         delegationWeights[to] += 1;
@@ -342,6 +350,9 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
     function undelegate(uint256 tokenID) external onlyNftOwner(tokenID) {
         address old = delegation[tokenID];
         require(old != address(0), "Not delegate");
+
+        _adjustNodeDailyActive(old, false);
+        confirmNodeRewards(old);
 
         delegation[tokenID] = address(0);
         delegationWeights[old] -= 1;
@@ -498,6 +509,20 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
             nodeDailyActive[node][today] += delegationWeights[node];
             globalDailyActiveNodes[today] += delegationWeights[node];
             emit NodeDailyActive(node, today);
+        }
+    }
+
+    function _adjustNodeDailyActive(address node, bool plus) internal {
+        uint32 today = todayIndex();
+        if (nodeDailyActive[node][today] == 0) {
+            return;
+        }
+        if (plus) {
+            nodeDailyActive[node][today] += 1;
+            globalDailyActiveNodes[today] += 1;
+        } else {
+            nodeDailyActive[node][today] -= 1;
+            globalDailyActiveNodes[today] -= 1;
         }
     }
 
