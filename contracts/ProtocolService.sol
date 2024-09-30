@@ -191,10 +191,10 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
         require(nodeInfo.id > 0, "Not register");
         require(msg.sender == node || msg.sender == nodeInfo.claimer, "Cannot claim");
         confirmNodeRewards(node);
-        require(nodeInfo.selfTotalRewards > int256(nodeInfo.selfClaimedRewards), "No reward");
+        require(nodeInfo.selfTotalRewards > nodeInfo.selfClaimedRewards, "No reward");
 
-        uint256 rewards = uint256(nodeInfo.selfTotalRewards) - nodeInfo.selfClaimedRewards;
-        nodeInfo.selfClaimedRewards = uint256(nodeInfo.selfTotalRewards);
+        uint256 rewards = nodeInfo.selfTotalRewards - nodeInfo.selfClaimedRewards;
+        nodeInfo.selfClaimedRewards = nodeInfo.selfTotalRewards;
 
         IVault(vault).rewardsWithdraw(msg.sender, rewards);
         emit NodeClaim(node, msg.sender, rewards);
@@ -210,10 +210,16 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
         require(!attestationVerifiedNode[attestationID][node], "Node verified");
 
         uint256 reward = ISettings(settings).nodeSlashReward();
+        if (nodeInfo.selfTotalRewards - nodeInfo.selfClaimedRewards < reward) {
+            reward = nodeInfo.selfTotalRewards - nodeInfo.selfClaimedRewards;
+        }
+
+        nodeInfo.selfTotalRewards -= reward;
         nodeInfo.missedVerifyCount += 1;
-        nodeInfo.selfTotalRewards -= int256(reward);
         nodeSlashed[node][attestationID] = true;
-        IVault(vault).rewardsWithdraw(msg.sender, reward);
+        if (reward > 0) {
+            IVault(vault).rewardsWithdraw(msg.sender, reward);
+        }
         emit NodeSlash(msg.sender, node, attestationID, reward);
 
         if (nodeInfo.missedVerifyCount >= ISettings(settings).nodeMaxMissVerifyCount()) {
@@ -241,7 +247,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
             }
             uint256 unitReward = IVault(vault).totalRewardByDate(dateIndex) / globalDailyActiveNodes[dateIndex];
             uint256 commissionReward = unitReward * nodeInfo.commissionRate / 1e4;
-            nodeInfo.selfTotalRewards += int256(commissionReward * nodeDailyActive[node][dateIndex]);
+            nodeInfo.selfTotalRewards += commissionReward * nodeDailyActive[node][dateIndex];
             nodeInfo.delegationRewards += unitReward - commissionReward;
         }
 

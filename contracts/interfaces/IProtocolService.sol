@@ -38,7 +38,7 @@ interface IProtocolService {
         bool active;
         uint32 lastConfirmDate;
         uint64 missedVerifyCount;
-        int256 selfTotalRewards;
+        uint256 selfTotalRewards;
         uint256 selfClaimedRewards;
         uint256 delegationRewards;
         uint256 lastEnterTime;
@@ -117,7 +117,7 @@ interface IProtocolService {
     event NodeReportVerification(address node, bytes32 attestationID, AttestationResult result);
     event NodeReportVerificationBatch(bytes32 attestationID, VerificationInfo[] infos);
     event NodeDailyActive(address node, uint32 date);
-    event NodeConfirmReward(address node, int256 selfReward, uint256 delegationReward);
+    event NodeConfirmReward(address node, uint256 selfReward, uint256 delegationReward);
 
     // delegation
     event Delegate(uint256 tokenID, address to);
