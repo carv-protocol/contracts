@@ -8,7 +8,8 @@ import "../interfaces/IveCarvs.sol";
 import "../interfaces/ISBT.sol";
 
 contract Airdrop01 is Ownable {
-    bytes32 public merkleRoot;
+    bytes32 public merkleRootForClaim;
+    bytes32 public merkleRootForStaking;
     address public carv;
     address public veCarvs;
     address public sbt;
@@ -19,8 +20,7 @@ contract Airdrop01 is Ownable {
     event Deposit(address depositer, uint256 amount);
     event Withdraw(address withdrawer, uint256 amount);
 
-    constructor(bytes32 merkleRoot_, address carv_, address veCarvs_, address sbt_) Ownable(msg.sender) {
-        merkleRoot = merkleRoot_;
+    constructor(address carv_, address veCarvs_, address sbt_) Ownable(msg.sender) {
         carv = carv_;
         veCarvs = veCarvs_;
         sbt = sbt_;
@@ -41,24 +41,28 @@ contract Airdrop01 is Ownable {
         emit Withdraw(msg.sender, amount);
     }
 
-    function changeMerkleRoot(bytes32 merkleRoot_) external onlyOwner {
-        merkleRoot = merkleRoot_;
+    function changeMerkleRootForClaim(bytes32 merkleRootForClaim_) external onlyOwner {
+        merkleRootForClaim = merkleRootForClaim_;
+    }
+
+    function changeMerkleRootForStaking(bytes32 merkleRootForStaking_) external onlyOwner {
+        merkleRootForStaking = merkleRootForStaking_;
     }
 
     function claim(uint256 amount, bytes32[] calldata merkleProof) external {
-        checkMerkleProof(amount, merkleProof);
+        checkMerkleProof(amount, merkleProof, merkleRootForClaim);
         IERC20(carv).transfer(msg.sender, amount);
         emit Claimed(msg.sender, amount);
     }
 
     function claimForStaking(uint256 amount, uint256 duration, bytes32[] calldata merkleProof) external {
-        checkMerkleProof(amount, merkleProof);
+        checkMerkleProof(amount, merkleProof, merkleRootForStaking);
         IveCarvs(veCarvs).depositForSpecial(msg.sender, amount, duration);
         ISBT(sbt).authorize(msg.sender);
         emit ClaimedForStaking(msg.sender, amount, duration);
     }
 
-    function checkMerkleProof(uint256 amount, bytes32[] calldata merkleProof) internal {
+    function checkMerkleProof(uint256 amount, bytes32[] calldata merkleProof, bytes32 merkleRoot) internal {
         require(!claimed[msg.sender], 'Drop already claimed');
         // Verify the merkle proof.
         bytes32 node = keccak256(abi.encodePacked(msg.sender, amount));
