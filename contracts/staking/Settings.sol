@@ -37,12 +37,12 @@ contract Settings is Initializable {
 
     function __Settings_init(address initialAdmin) internal onlyInitializing {
         admin = initialAdmin;
-        _modifySupportedDurations(30, true, 2500, 2500);
-        _modifySupportedDurations(90, true, 7500, 7500);
-        _modifySupportedDurations(180, true, 15000, 15000);
-        _modifySupportedDurations(360, true, 30000, 30000);
-        _modifySupportedDurations(720, true, 60000, 60000);
-        _modifySupportedDurations(1080, true, 90000, 90000);
+        _modifySupportedDurations(30, true, 421500, 2500);
+        _modifySupportedDurations(90, true, 1411500, 7500);
+        _modifySupportedDurations(180, true, 3025500, 15000);
+        _modifySupportedDurations(360, true, 6485300, 30000);
+        _modifySupportedDurations(720, true, 13901600, 60000);
+        _modifySupportedDurations(1080, true, 21715300, 90000);
     }
 
     function updateSettings(SettingParams calldata params) external onlyAdmin {

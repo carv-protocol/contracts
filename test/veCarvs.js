@@ -47,15 +47,15 @@ describe("veCarvs", function () {
         expect(await veCarvs.admin()).to.equal(owner.address);
 
         expect( (await veCarvs.supportedDurations(30)).active ).to.equal(true);
-        expect( (await veCarvs.supportedDurations(30)).rewardWeight ).to.equal(2500);
+        expect( (await veCarvs.supportedDurations(30)).rewardWeight ).to.equal(421500);
         expect( (await veCarvs.supportedDurations(30)).stakingMultiplier ).to.equal(2500);
 
         expect( (await veCarvs.supportedDurations(180)).active ).to.equal(true);
-        expect( (await veCarvs.supportedDurations(180)).rewardWeight ).to.equal(15000);
+        expect( (await veCarvs.supportedDurations(180)).rewardWeight ).to.equal(3025500);
         expect( (await veCarvs.supportedDurations(180)).stakingMultiplier ).to.equal(15000);
 
         expect( (await veCarvs.supportedDurations(1080)).active ).to.equal(true);
-        expect( (await veCarvs.supportedDurations(1080)).rewardWeight ).to.equal(90000);
+        expect( (await veCarvs.supportedDurations(1080)).rewardWeight ).to.equal(21715300);
         expect( (await veCarvs.supportedDurations(1080)).stakingMultiplier ).to.equal(90000);
 
         expect( (await veCarvs.supportedDurations(0)).active ).to.equal(false);
@@ -93,7 +93,7 @@ describe("veCarvs", function () {
         expect( (await veCarvs.supportedDurations(30)).stakingMultiplier ).to.equal(0);
 
         expect( (await veCarvs.supportedDurations(1080)).active ).to.equal(true);
-        expect( (await veCarvs.supportedDurations(1080)).rewardWeight ).to.equal(90000);
+        expect( (await veCarvs.supportedDurations(1080)).rewardWeight ).to.equal(21715300);
         expect( (await veCarvs.supportedDurations(1080)).stakingMultiplier ).to.equal(90000);
 
         expect( (await veCarvs.supportedDurations(120)).active ).to.equal(true);
@@ -143,25 +143,25 @@ describe("veCarvs", function () {
         await expect(veCarvs.deposit(E18(1000), 3600*24*90)).not.to.be.reverted;
 
         expect(await veCarvs.accumulatedRewardPerShare()).to.equal(E18(0));
-        expect(await veCarvs.totalShare()).to.equal(E18(1000).mul(90).div(120));
+        expect(await veCarvs.totalShare()).to.equal(E18(1000).mul(1411500).div(10000));
         expect(await veCarvs.lastRewardTimestamp()).to.equal(await time.latest());
         expect(await veCarvs.rewardTokenAmount()).to.equal(E18(1000000));
-        expect( (await veCarvs.positions(1)).share ).to.equal(E18(1000).mul(90).div(120));
+        expect( (await veCarvs.positions(1)).share ).to.equal(E18(1000).mul(1411500).div(10000));
         expect( (await veCarvs.positions(1)).debt ).to.equal(E18(0));
 
         time.increase(3600*24)
         await expect(veCarvs.claim(1)).not.to.be.reverted;
 
-        expect(await veCarvs.totalShare()).to.equal(E18(1000).mul(90).div(120));
+        expect(await veCarvs.totalShare()).to.equal(E18(1000).mul(1411500).div(10000));
         // expect(await veCarvs.rewardTokenAmount()).to.equal(E18(1000000).sub(E18(36*24)));
-        expect( (await veCarvs.positions(1)).share ).to.equal(E18(1000).mul(90).div(120));
+        expect( (await veCarvs.positions(1)).share ).to.equal(E18(1000).mul(1411500).div(10000));
         expect( (await veCarvs.positions(1)).debt ).to.equal((await veCarvs.positions(1)).share.mul(await veCarvs.accumulatedRewardPerShare()).div(E18(1)));
 
         time.increase(3600*24*10)
         await expect(veCarvs.claim(1)).not.to.be.reverted;
-        expect(await veCarvs.totalShare()).to.equal(E18(1000).mul(90).div(120));
+        expect(await veCarvs.totalShare()).to.equal(E18(1000).mul(1411500).div(10000));
         // expect(await veCarvs.rewardTokenAmount()).to.equal(E18(1000000).sub(E18(36*24*11)));
-        expect( (await veCarvs.positions(1)).share ).to.equal(E18(1000).mul(90).div(120));
+        expect( (await veCarvs.positions(1)).share ).to.equal(E18(1000).mul(1411500).div(10000));
         expect( (await veCarvs.positions(1)).debt ).to.equal((await veCarvs.positions(1)).share.mul(await veCarvs.accumulatedRewardPerShare()).div(E18(1)));
 
     });
