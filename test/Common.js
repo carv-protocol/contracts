@@ -191,12 +191,12 @@ exports.deployAll = async function () {
 
     await vault.initialize(carv.address, veCarv.address, proxy.address, startTimestamp)
     await setting.updateSettings({
-        maxVrfActiveNodes: 2000,
+        maxVrfActiveNodes: 100000,
         nodeMinOnlineDuration: 21600, // 6 hours
         nodeVerifyDuration: 1800,  // 30 minutes
         nodeSlashReward: e18(10) ,  // 10 veCARV
         minCommissionRateModifyInterval: 604800, // 1 week
-        nodeMaxMissVerifyCount: 5,
+        nodeMaxMissVerifyCount: 2,
         maxCommissionRate: 10000,  // 100%
         maxCommissionRateModifyLimitOnce: 500, // 5%
         maxNodeWeights: 100,

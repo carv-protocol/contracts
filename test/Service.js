@@ -269,35 +269,85 @@ describe("Service", function () {
             ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test2")),
             0
         )).not.to.be.reverted;
+
+        // console.log(await proxy.nodeInfos(alice.address))
+
+    });
+
+    it("Node Slash Reward", async function () {
+        await carv.approve(vault.address, E18(250000000))
+        await vault.rewardsDeposit(CarvTotalRewards)
+
+        let owner = signers[0]
+        let alice = signers[1]
+
+        await proxy.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("SLASH_ROLE")), owner.address)
+        await expect(proxy.grantRole(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("TEE_ROLE")), owner.address)).not.to.be.reverted;
+
+        await nft.mint(alice.address, 1, {code:"", price: 0, tier: 0});
+        await expect(proxy.connect(alice).delegate(1, alice.address)).not.to.be.reverted;
+        await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
+        await proxy.connect(alice).nodeModifyCommissionRate(1)
+
         // ------
+
+        await time.increase(3600 * 6);
+        await proxy.connect(alice).nodeReportDailyActive(alice.address)
+        await time.increase(3600 * 24);
+        await proxy.connect(alice).confirmNodeRewards(alice.address)
+
+        // ------
+        await expect(proxy.teeReportAttestations(["test"])).not.to.be.reverted;
+        await coordinator.callback(1, [123456789])
+
+        await time.increase(3600);
+
+        expect((await proxy.nodeInfos(alice.address)).selfTotalRewards).to.equal("38585000000000000000");
+
+        await expect(proxy.nodeSlash(
+            alice.address,
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
+            0
+        )).not.to.be.reverted;
+
+        expect((await proxy.nodeInfos(alice.address)).selfTotalRewards).to.equal("28585000000000000000");
+        expect(await veCarv.balanceOf(owner.address)).to.equal("10000000000000000000");
+
+        await expect(proxy.teeReportAttestations(["test1"])).not.to.be.reverted;
+        await coordinator.callback(2, [123456789])
+        await time.increase(3600);
+        await expect(proxy.nodeSlash(
+            alice.address,
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test1")),
+            0
+        )).not.to.be.reverted;
+
+        expect((await proxy.nodeInfos(alice.address)).active).to.equal(false);
+
+        await expect(proxy.connect(alice).nodeEnter(alice.address)).not.to.be.reverted;
+
+        await expect(proxy.teeReportAttestations(["test2"])).not.to.be.reverted;
+        await coordinator.callback(3, [123456789])
+        await time.increase(3600);
+        await expect(proxy.nodeSlash(
+            alice.address,
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test2")),
+            0
+        )).not.to.be.reverted;
+
+        expect((await proxy.nodeInfos(alice.address)).selfTotalRewards).to.equal("8585000000000000000");
+        expect(await veCarv.balanceOf(owner.address)).to.equal("30000000000000000000");
+
         await expect(proxy.teeReportAttestations(["test3"])).not.to.be.reverted;
         await coordinator.callback(4, [123456789])
-        await time.increase(hour);
+        await time.increase(3600);
         await expect(proxy.nodeSlash(
             alice.address,
             ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test3")),
             0
         )).not.to.be.reverted;
-        // ------
-        await expect(proxy.teeReportAttestations(["test4"])).not.to.be.reverted;
-        await coordinator.callback(5, [123456789])
-        await time.increase(hour);
-        await expect(proxy.nodeSlash(
-            alice.address,
-            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test4")),
-            0
-        )).not.to.be.reverted;
-        // ------
-        await expect(proxy.teeReportAttestations(["test5"])).not.to.be.reverted;
-        await coordinator.callback(6, [123456789])
-        await time.increase(hour);
-        await expect(proxy.nodeSlash(
-            alice.address,
-            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test5")),
-            0
-        )).not.to.be.reverted;
 
-        // console.log(await proxy.nodeInfos(alice.address))
-
-    });
+        expect((await proxy.nodeInfos(alice.address)).selfTotalRewards).to.equal("0");
+        expect(await veCarv.balanceOf(owner.address)).to.equal("38585000000000000000");
+    })
 });
