@@ -1,6 +1,6 @@
 {
     "name": "CARV",
     "symbol": "CARV",
-    "description": "Fully for testing purposes only",
+    "description": "The CARV Protocol is a modular data layer that facilitates data exchange and value distribution across gaming, AI and ∞. It encompasses end-to-end data flow processes, including data verification, identity authentication, storage, processing, model training, and value distribution.",
     "image": "https://raw.githubusercontent.com/carv-protocol/carv-contracts-alphanet/main/oft_scripts/solana/metadata/carv_logo.png"
   }
