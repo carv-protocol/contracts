@@ -237,7 +237,7 @@ contract ProtocolService is IProtocolService, ICarvVrfCallback, AccessControlUpg
         uint32 today = todayIndex();
         NodeInfo storage nodeInfo = nodeInfos[node];
 
-        if (nodeInfo.lastConfirmDate == today-1) {
+        if (nodeInfo.id == 0 || nodeInfo.lastConfirmDate == today-1) {
             return;
         }
 
