@@ -63,16 +63,17 @@ contract veCarvs is Settings, AccessControlUpgradeable, MulticallUpgradeable, Iv
 
     function deposit(uint256 amount, uint256 duration) external {
         require(duration <= type(uint16).max * DURATION_PER_EPOCH && duration % DURATION_PER_EPOCH == 0, "invalid duration");
-        require(amount >= minStakingAmount, "invalid amount");
+        require(amount >= minStakingAmount(), "invalid amount");
 
-        DurationInfo memory durationInfo = supportedDurations[uint16(duration/DURATION_PER_EPOCH)];
+        DurationInfo memory durationInfo = supportedDurations(uint16(duration/DURATION_PER_EPOCH));
         _deposit(msg.sender, amount, duration, durationInfo);
     }
 
     function depositForSpecial(address user, uint256 amount, uint256 duration) external onlyRole(SPECIAL_DEPOSIT_ROLE) {
+        require(user != address(0), "zero address");
         require(duration <= type(uint16).max * DURATION_PER_EPOCH && duration % DURATION_PER_EPOCH == 0, "invalid duration");
 
-        DurationInfo memory durationInfo = specialDurations[uint16(duration/DURATION_PER_EPOCH)];
+        DurationInfo memory durationInfo = specialDurations(uint16(duration/DURATION_PER_EPOCH));
         _deposit(user, amount, duration, durationInfo);
     }
 
@@ -192,7 +193,7 @@ contract veCarvs is Settings, AccessControlUpgradeable, MulticallUpgradeable, Iv
         if (totalShare == 0) {
             lastRewardTimestamp = block.timestamp;
         } else {
-            uint256 newReward = (block.timestamp - lastRewardTimestamp) * rewardPerSecond;
+            uint256 newReward = (block.timestamp - lastRewardTimestamp) * rewardPerSecond();
             accumulatedRewardPerShare += (newReward * PRECISION) / totalShare;
             lastRewardTimestamp = block.timestamp;
         }
