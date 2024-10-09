@@ -8,8 +8,8 @@ import "../interfaces/IveCarv.sol";
 
 contract Airdrop02 is Ownable {
     bytes32 public merkleRoot;
-    address public token;
-    address public veToken;
+    address public immutable token;
+    address public immutable veToken;
     mapping(address => bool) public claimed;
 
     event Claimed(address user, uint256 amount);
@@ -17,6 +17,7 @@ contract Airdrop02 is Ownable {
     event Withdraw(address withdrawer, uint256 amount);
 
     constructor(bytes32 merkleRoot_, address token_, address veToken_) Ownable(msg.sender) {
+        require(token_ != address(0) && veToken_ != address(0));
         merkleRoot = merkleRoot_;
         token = token_;
         veToken = veToken_;
@@ -48,9 +49,9 @@ contract Airdrop02 is Ownable {
         bytes32 node = keccak256(abi.encodePacked(msg.sender, amount));
         require(MerkleProof.verify(merkleProof, merkleRoot, node), 'Invalid proof');
 
+        claimed[msg.sender] = true;
         // deposit CARV token to veCarv contract which will mint veCarv to user in 1:1
         IveCarv(veToken).deposit(amount, msg.sender);
-        claimed[msg.sender] = true;
         emit Claimed(msg.sender, amount);
     }
 }

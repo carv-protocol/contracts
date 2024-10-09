@@ -13,9 +13,9 @@ contract Airdrop01 is Ownable {
 
     bytes32 public merkleRootForClaim;
     bytes32 public merkleRootForStaking;
-    address public carv;
-    address public veCarvs;
-    address public sbt;
+    address public immutable carv;
+    address public immutable veCarvs;
+    address public immutable sbt;
     mapping(address => bool) public claimed;
 
     event Claimed(address user, uint256 amount);
@@ -24,6 +24,7 @@ contract Airdrop01 is Ownable {
     event Withdraw(address withdrawer, uint256 amount);
 
     constructor(address carv_, address veCarvs_, address sbt_) Ownable(msg.sender) {
+        require(carv_ != address(0) && veCarvs_ != address(0) && sbt_ != address(0));
         carv = carv_;
         veCarvs = veCarvs_;
         sbt = sbt_;
