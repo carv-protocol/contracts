@@ -8,9 +8,6 @@ import "../interfaces/IveCarvs.sol";
 import "../interfaces/ISBT.sol";
 
 contract Airdrop01 is Ownable {
-    uint256 CLAIM_FACTOR = 6;
-    uint256 CLAIM_DECIMALS = 10;
-
     bytes32 public merkleRootForClaim;
     bytes32 public merkleRootForStaking;
     address public immutable carv;
@@ -55,7 +52,6 @@ contract Airdrop01 is Ownable {
 
     function claim(uint256 amount, bytes32[] calldata merkleProof) external {
         checkMerkleProof(amount, merkleProof, merkleRootForClaim);
-        amount = amount * CLAIM_FACTOR / CLAIM_DECIMALS;
         IERC20(carv).transfer(msg.sender, amount);
         emit Claimed(msg.sender, amount);
     }
