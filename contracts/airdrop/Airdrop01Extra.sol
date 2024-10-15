@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IveCarvs.sol";
 import "../interfaces/ISBT.sol";
 
-contract Airdrop01 is Ownable {
+contract Airdrop01Extra is Ownable {
     bytes32 public merkleRootForClaim;
     bytes32 public merkleRootForStaking;
     address public immutable carv;
