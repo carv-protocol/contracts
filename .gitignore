@@ -10,6 +10,7 @@ testnet_scripts
 mainnet_scripts
 
 contracts/test
+contracts/aggregators
 
 local_test
 
