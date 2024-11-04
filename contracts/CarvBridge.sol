@@ -6,18 +6,20 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IOFT, SendParam, OFTReceipt, MessagingFee, MessagingReceipt } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oft/interfaces/IOFT.sol";
 
 contract CarvBridge is Ownable {
-    // feeRate = feeBPS / 1,000,000
+    uint32 public constant FEE_DENOMINATOR = 1000000;
+
+    // feeRate = feeBPS / FEE_DENOMINATOR
     // 1000 feeBPS means feeRate is 0.1%
     uint256 public feeBPS;
     address public vault;
     address public oft;
     mapping(uint32 => bool) public supportedDstEid;
 
+    event Sent(bytes32 indexed guid, address indexed fromAddress, uint32 dstEid, uint256 amount);
     event UpdateFeeBPS(address indexed sender, uint256 feeBPS);
     event UpdateVault(address indexed sender, address vault);
     event UpdateOft(address indexed sender, address oft);
-    event UpdateSupportedDstEid(address indexed sender, uint256 dstEid);
-    event Sent(bytes32 indexed guid, address indexed fromAddress, uint32 dstEid, uint256 amount);
+    event UpdateSupportedDstEid(address indexed sender, uint256 dstEid, bool supported);
 
     constructor(uint256 _feeBPS, address _vault, address _oft) Ownable(msg.sender) {
         feeBPS = _feeBPS;
@@ -28,11 +30,14 @@ contract CarvBridge is Ownable {
     function quoteSend(uint32 dstEid, uint256 amount) public view returns (uint256) {
         require(supportedDstEid[dstEid], "unsupported dstEid");
 
+        uint256 fee = amount * feeBPS / FEE_DENOMINATOR;
+        uint256 amountDeductFee = amount - fee;
+
         SendParam memory sendParam = SendParam({
             dstEid: dstEid,
             to: bytes32(uint256(uint160(msg.sender))),
-            amountLD: amount,
-            minAmountLD: amount,
+            amountLD: amountDeductFee,
+            minAmountLD: amountDeductFee,
             extraOptions: bytes(""),
             composeMsg: bytes(""),
             oftCmd: bytes("")
@@ -45,9 +50,8 @@ contract CarvBridge is Ownable {
 
     function send(uint32 dstEid, uint256 amount) public payable {
         require(supportedDstEid[dstEid], "unsupported dstEid");
-        require(IERC20(oft).allowance(msg.sender, address(this)) >= amount, "Insufficient allowance");
 
-        uint256 fee = amount * feeBPS / 1000000;
+        uint256 fee = amount * feeBPS / FEE_DENOMINATOR;
         uint256 amountDeductFee = amount - fee;
 
         IERC20(oft).transferFrom(msg.sender, address(this), amount);
@@ -88,8 +92,8 @@ contract CarvBridge is Ownable {
         emit UpdateOft(msg.sender,_oft);
     }
 
-    function updateSupportedDstEid(uint32 dstEid) public onlyOwner {
-        supportedDstEid[dstEid] = true;
-        emit UpdateSupportedDstEid(msg.sender, dstEid);
+    function updateSupportedDstEid(uint32 dstEid, bool supported) public onlyOwner {
+        supportedDstEid[dstEid] = supported;
+        emit UpdateSupportedDstEid(msg.sender, dstEid, supported);
     }
 }

@@ -1,11 +1,21 @@
 const hre = require("hardhat");
 
-const sendAmount = 3
-const dstEid = 40231
+const sendAmount = 10
 
 // eth sepolia
-const oftAddr = "0xF0376B59Daf4254Ac69949E7DC9082C56c2e3FFF"
-const contractAddr = "0xDce980Cb0D1C49DDcD6A7811B9299AFB34895010"
+// const oftAddr = "0xF0376B59Daf4254Ac69949E7DC9082C56c2e3FFF"
+// const contractAddr = "0xDce980Cb0D1C49DDcD6A7811B9299AFB34895010"
+// const dstEid = 40231
+
+// arbi sepolia
+// const oftAddr = "0x60BBec26e676e8Ccda85Ec1466Ce80CdB7a0b8cc"
+// const contractAddr = "0x623fb310f3d08199Dc6b66b559dD9e5a9AE5d5B3"
+// const dstEid = 40245
+
+// base sepolia
+const oftAddr = "0x60BBec26e676e8Ccda85Ec1466Ce80CdB7a0b8cc"
+const contractAddr = "0x32d9D0F88064205ecD9A5A3cECf222cd46E63f95"
+const dstEid = 40231
 
 async function main() {
     const [deployer] = await hre.ethers.getSigners();
@@ -24,7 +34,9 @@ async function main() {
 
     let fee = await contract.quoteSend(dstEid, e18(sendAmount))
     console.log(">>> fee", fee)
-    // 105272831012966
+    // eth sepolia  105272831012966
+    // arbi sepolia 85598084460004
+    // base sepolia 109748097732990
 
     let tx
 
