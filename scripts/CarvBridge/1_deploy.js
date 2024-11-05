@@ -21,8 +21,8 @@ async function main() {
     await carvBridge.deployed()
 
     console.log(">>> carvBridge", carvBridge.address)
-    // arbi sepolia 0x623fb310f3d08199Dc6b66b559dD9e5a9AE5d5B3
-    // base sepolia 0x32d9D0F88064205ecD9A5A3cECf222cd46E63f95
+    // arbi sepolia 0x87d3f1Cc5CFABb8081B2c83f148C88070378F1e9
+    // base sepolia 0xcc417C6568DD47FBF7706D6Da2d7B6A4336E509D
 }
 
 main().catch((error) => {

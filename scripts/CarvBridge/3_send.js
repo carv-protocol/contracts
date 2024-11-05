@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 
-const sendAmount = 10
+const sendAmount = 20
 
 // eth sepolia
 // const oftAddr = "0xF0376B59Daf4254Ac69949E7DC9082C56c2e3FFF"
@@ -9,12 +9,12 @@ const sendAmount = 10
 
 // arbi sepolia
 // const oftAddr = "0x60BBec26e676e8Ccda85Ec1466Ce80CdB7a0b8cc"
-// const contractAddr = "0x623fb310f3d08199Dc6b66b559dD9e5a9AE5d5B3"
+// const contractAddr = "0x87d3f1Cc5CFABb8081B2c83f148C88070378F1e9"
 // const dstEid = 40245
 
 // base sepolia
 const oftAddr = "0x60BBec26e676e8Ccda85Ec1466Ce80CdB7a0b8cc"
-const contractAddr = "0x32d9D0F88064205ecD9A5A3cECf222cd46E63f95"
+const contractAddr = "0xcc417C6568DD47FBF7706D6Da2d7B6A4336E509D"
 const dstEid = 40231
 
 async function main() {

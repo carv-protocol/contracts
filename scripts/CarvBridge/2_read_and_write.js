@@ -3,9 +3,9 @@ const hre = require("hardhat");
 // eth sepolia
 // const contractAddr = "0xDce980Cb0D1C49DDcD6A7811B9299AFB34895010"
 // arbi sepolia
-// const contractAddr = "0x623fb310f3d08199Dc6b66b559dD9e5a9AE5d5B3"
+// const contractAddr = "0x87d3f1Cc5CFABb8081B2c83f148C88070378F1e9"
 // base sepolia
-const contractAddr = "0x32d9D0F88064205ecD9A5A3cECf222cd46E63f95"
+const contractAddr = "0xcc417C6568DD47FBF7706D6Da2d7B6A4336E509D"
 
 // eth sepolia
 // const dstEid = 40161

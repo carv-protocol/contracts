@@ -10,18 +10,18 @@ contract CarvBridge is Ownable {
 
     // feeRate = feeBPS / FEE_DENOMINATOR
     // 1000 feeBPS means feeRate is 0.1%
-    uint256 public feeBPS;
+    uint32 public feeBPS;
     address public vault;
     address public oft;
     mapping(uint32 => bool) public supportedDstEid;
 
     event Sent(bytes32 indexed guid, address indexed fromAddress, uint32 dstEid, uint256 amount);
-    event UpdateFeeBPS(address indexed sender, uint256 feeBPS);
+    event UpdateFeeBPS(address indexed sender, uint32 feeBPS);
     event UpdateVault(address indexed sender, address vault);
     event UpdateOft(address indexed sender, address oft);
-    event UpdateSupportedDstEid(address indexed sender, uint256 dstEid, bool supported);
+    event UpdateSupportedDstEid(address indexed sender, uint32 dstEid, bool supported);
 
-    constructor(uint256 _feeBPS, address _vault, address _oft) Ownable(msg.sender) {
+    constructor(uint32 _feeBPS, address _vault, address _oft) Ownable(msg.sender) {
         feeBPS = _feeBPS;
         vault = _vault;
         oft = _oft;
@@ -77,7 +77,7 @@ contract CarvBridge is Ownable {
         emit Sent(messagingReceipt.guid, msg.sender, dstEid, amount);
     }
 
-    function updateFeeBPS(uint256 _feeBPS) public onlyOwner {
+    function updateFeeBPS(uint32 _feeBPS) public onlyOwner {
         feeBPS = _feeBPS;
         emit UpdateFeeBPS(msg.sender,_feeBPS);
     }
