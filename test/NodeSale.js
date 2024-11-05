@@ -4,10 +4,14 @@ const { expect } = require("chai");
 const { E, E18, deployNodeSale} = require("./Common")
 
 describe("NodeSale", function () {
-    let owner, receiver, alice, bob, carv, nodeSale, carvAggregator, ethAggregator
+    async function mintNft(to) {
+        await nft.mint(to, 1, {code:"", price: 0, tier: 0});
+    }
+
+    let owner, receiver, alice, bob, carv, nodeSale, carvAggregator, ethAggregator, nft
 
     beforeEach(async function () {
-        [owner, receiver, alice, bob, carv, nodeSale, carvAggregator, ethAggregator] = await deployNodeSale()
+        [owner, receiver, alice, bob, carv, nodeSale, carvAggregator, ethAggregator, nft] = await deployNodeSale()
     })
 
     it("Aggregator", async function () {
@@ -49,7 +53,25 @@ describe("NodeSale", function () {
         console.log( await nodeSale.usd2eth(E18(1300)))
     });
 
+    it("NFT", async function () {
+        await nft.setTransferOnceWhitelist([nodeSale.address])
+
+        await carv.approve(nodeSale.address, E18(10000000))
+        expect(nodeSale.purchase(1, 0)).to.be.reverted
+        await mintNft(nodeSale.address)
+        expect(nodeSale.purchase(1, 0)).not.to.be.reverted
+
+        await mintNft(alice.address)
+        await mintNft(nodeSale.address)
+        console.log(await nodeSale.tokenIDList(0), await nodeSale.tokenIDList(1))
+    });
+
     it("Node Sale(by CARV)", async function () {
+        for (let i = 0; i < 1000; i++) {
+            await mintNft(nodeSale.address)
+        }
+        await nft.setTransferOnceWhitelist([nodeSale.address])
+
         await expect(carvAggregator.updateData(80000000)).not.to.be.reverted
         await expect(ethAggregator.updateData(300000000000)).not.to.be.reverted
 
@@ -74,6 +96,11 @@ describe("NodeSale", function () {
     });
 
     it("Node Sale(by ETH)", async function () {
+        for (let i = 0; i < 1000; i++) {
+            await mintNft(nodeSale.address)
+        }
+        await nft.setTransferOnceWhitelist([nodeSale.address])
+
         await expect(carvAggregator.updateData(80000000)).not.to.be.reverted
         await expect(ethAggregator.updateData(300000000000)).not.to.be.reverted
 

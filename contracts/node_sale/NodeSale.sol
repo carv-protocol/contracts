@@ -3,10 +3,12 @@ pragma solidity 0.8.20;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/INodeSale.sol";
 
-contract NodeSale is INodeSale, OwnableUpgradeable {
+contract NodeSale is OwnableUpgradeable, IERC721Receiver, INodeSale {
 
     uint256 public constant INITIAL_PRICE = 1500e18;
     uint256 public constant PRICE_CHANGE_PER_UNIT = 100e18;
@@ -17,13 +19,22 @@ contract NodeSale is INodeSale, OwnableUpgradeable {
 
     Oracle public oracle;
     address public carvToken;
+    address public carvNft;
     address public receiver;
     uint32 public purchasedCount;
+    uint32[] public tokenIDList;
 
-    function initialize(address carvToken_, address receiver_) external initializer {
+    function initialize(address carvToken_, address carvNft_) external initializer {
         carvToken = carvToken_;
-        receiver = receiver_;
+        carvNft = carvNft_;
         __Ownable_init(msg.sender);
+    }
+
+    function onERC721Received(address, address, uint256 tokenId, bytes calldata) external returns (bytes4) {
+        require(msg.sender == carvNft, "illegal receive");
+        tokenIDList.push(uint32(tokenId));
+        emit NftReceived(tokenId, uint32(tokenIDList.length-1));
+        return IERC721Receiver.onERC721Received.selector;
     }
 
     function setReceiver(address receiver_) external onlyOwner {
@@ -44,7 +55,9 @@ contract NodeSale is INodeSale, OwnableUpgradeable {
 
     function purchase(uint32 count, Payment payment) external payable {
         require(count > 0, "zero purchase count");
+        require(receiver != address(0), "no receiver");
         require(count <= UNIT_LENGTH - purchasedCount % UNIT_LENGTH, "unit limited");
+        require(count <= tokenIDList.length - purchasedCount);
 
         uint32 unitIndex = currentUnitIndex();
         uint256 priceUSD = INITIAL_PRICE + uint256(unitIndex)*PRICE_CHANGE_PER_UNIT;
@@ -63,6 +76,10 @@ contract NodeSale is INodeSale, OwnableUpgradeable {
             }
         } else {
             revert("unknown payment");
+        }
+
+        for (uint32 i; i < count; i++) {
+            IERC721(carvNft).transferFrom(address(this), msg.sender, tokenIDList[purchasedCount+i]);
         }
 
         purchasedCount += count;

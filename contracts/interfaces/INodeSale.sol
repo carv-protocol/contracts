@@ -17,6 +17,8 @@ interface INodeSale {
 
     event OracleChanged(Payment payment, address aggregator);
 
+    event NftReceived(uint256 tokenID, uint32 index);
+
     event Purchase(address purchaser, Payment payment, uint32 count, uint32 unitIndex, uint256 price);
 
     function purchase(uint32 count, Payment payment) external payable;
