@@ -138,6 +138,32 @@ exports.deploySBT = async function () {
     return [owner, alice, bob, cindy, sbt]
 }
 
+exports.deployNodeSale = async function () {
+    const [owner, receiver, alice, bob] = await ethers.getSigners();
+
+    const Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
+    const CarvToken = await ethers.getContractFactory("MockCarvToken");
+    const Aggregator = await ethers.getContractFactory("Aggregator");
+    const NodeSale = await ethers.getContractFactory("NodeSale");
+    const CarvNft = await ethers.getContractFactory("CarvNft");
+
+    const nft = await CarvNft.deploy("CarvNft", "CarvNft");
+    const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
+    const carvAggregator = await Aggregator.deploy();
+    const ethAggregator = await Aggregator.deploy();
+
+    let nodeSale = await NodeSale.deploy();
+    nodeSale = await Proxy.deploy(nodeSale.address, owner.address, ethers.utils.toUtf8Bytes(""))
+    nodeSale = NodeSale.attach(nodeSale.address)
+    await nodeSale.initialize(carv.address, nft.address)
+
+    await nodeSale.setReceiver(receiver.address)
+    await nodeSale.setOracle(0, carvAggregator.address)
+    await nodeSale.setOracle(1, ethAggregator.address)
+
+    return [owner, receiver, alice, bob, carv, nodeSale, carvAggregator, ethAggregator, nft]
+}
+
 exports.deployVault = async function () {
     const [owner, service, alice] = await ethers.getSigners();
 

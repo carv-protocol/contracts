@@ -8,8 +8,10 @@ typechain-types
 local_scripts
 testnet_scripts
 mainnet_scripts
+nodesale_scripts
 
 contracts/test
+contracts/aggregators
 
 local_test
 
