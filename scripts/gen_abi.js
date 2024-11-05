@@ -1,6 +1,6 @@
 const fs = require("fs");
 
-const Contracts = ["CarvNft", "CarvToken", "veCarvToken", "Settings", "Vault", "ProtocolService"]
+const Contracts = ["CarvNft", "CarvToken", "veCarvToken", "Settings", "Vault", "ProtocolService", "CarvBridge"]
 const ContractsStaking = ["veCarvs"]
 const ContractsAirdrop = ["Airdrop01", "Airdrop02", "SBT"]
 const ContractsNodeSale = ["NodeSale"]
