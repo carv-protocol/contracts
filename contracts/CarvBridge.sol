@@ -22,6 +22,7 @@ contract CarvBridge is Ownable {
     event UpdateSupportedDstEid(address indexed sender, uint32 dstEid, bool supported);
 
     constructor(uint32 _feeBPS, address _vault, address _oft) Ownable(msg.sender) {
+        require(_vault != address(0) && _oft != address(0), "address cannot be zero");
         feeBPS = _feeBPS;
         vault = _vault;
         oft = _oft;
@@ -83,11 +84,13 @@ contract CarvBridge is Ownable {
     }
 
     function updateVault(address _vault) public onlyOwner {
+        require(_vault != address(0), "address cannot be zero");
         vault = _vault;
         emit UpdateVault(msg.sender,_vault);
     }
 
     function updateOft(address _oft) public onlyOwner {
+        require(_oft != address(0), "address cannot be zero");
         oft = _oft;
         emit UpdateOft(msg.sender,_oft);
     }
