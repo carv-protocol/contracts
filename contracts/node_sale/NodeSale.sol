@@ -24,7 +24,12 @@ contract NodeSale is OwnableUpgradeable, IERC721Receiver, INodeSale {
     uint32 public purchasedCount;
     uint32[] public tokenIDList;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address carvToken_, address carvNft_) external initializer {
+        require(carvToken_ != address(0) && carvNft_ != address(0), "address cannot be zero");
         carvToken = carvToken_;
         carvNft = carvNft_;
         __Ownable_init(msg.sender);
@@ -38,11 +43,13 @@ contract NodeSale is OwnableUpgradeable, IERC721Receiver, INodeSale {
     }
 
     function setReceiver(address receiver_) external onlyOwner {
+        require(receiver_ != address(0), "address cannot be zero");
         receiver = receiver_;
         emit ReceiverChanged(receiver_);
     }
 
     function setOracle(Payment payment, address aggregator) external onlyOwner {
+        require(aggregator != address(0), "address cannot be zero");
         if (payment == Payment.Carv) {
             oracle.carv = aggregator;
         } else if (payment == Payment.Eth) {
@@ -57,13 +64,14 @@ contract NodeSale is OwnableUpgradeable, IERC721Receiver, INodeSale {
         require(count > 0, "zero purchase count");
         require(receiver != address(0), "no receiver");
         require(count <= UNIT_LENGTH - purchasedCount % UNIT_LENGTH, "unit limited");
-        require(count <= tokenIDList.length - purchasedCount);
+        require(count <= tokenIDList.length - purchasedCount, "no nft available");
 
         uint32 unitIndex = currentUnitIndex();
         uint256 priceUSD = INITIAL_PRICE + uint256(unitIndex)*PRICE_CHANGE_PER_UNIT;
         uint256 price;
 
         if (payment == Payment.Carv) {
+            require(msg.value == 0, "msg.value should be 0 when payment is CARV");
             price = usd2carv(priceUSD);
             IERC20(carvToken).transferFrom(msg.sender, receiver, price * uint256(count));
         } else if (payment == Payment.Eth) {
@@ -104,12 +112,16 @@ contract NodeSale is OwnableUpgradeable, IERC721Receiver, INodeSale {
 
         uint8 decimals = dataFeed.decimals();
         (
-        /* uint80 roundID */,
+        uint80 roundID,
         int answer,
-        /*uint startedAt*/,
-        /*uint updatedAt*/,
-        /*uint80 answeredInRound*/
+        uint startedAt,
+        uint updatedAt,
+        uint80 answeredInRound
         ) = dataFeed.latestRoundData();
+
+        require(answer > 0, "price should be greater than zero");
+        require(startedAt > 0 && updatedAt > 0, "timestamp should not be zero");
+        require(answeredInRound >= roundID, "answeredInRound should be equal to or greater than roundID.");
 
         return priceUSD * (10**decimals) / uint256(answer);
     }
