@@ -7,6 +7,7 @@ import { IOFT, SendParam, OFTReceipt, MessagingFee, MessagingReceipt } from "@la
 
 contract CarvBridge is Ownable {
     uint32 public constant FEE_DENOMINATOR = 1000000;
+    uint32 public constant FEE_BPS_UPPER_LIMIT = 10000;
 
     // feeRate = feeBPS / FEE_DENOMINATOR
     // 1000 feeBPS means feeRate is 0.1%
@@ -22,6 +23,7 @@ contract CarvBridge is Ownable {
     event UpdateSupportedDstEid(address indexed sender, uint32 dstEid, bool supported);
 
     constructor(uint32 _feeBPS, address _vault, address _oft) Ownable(msg.sender) {
+        require(_feeBPS <= FEE_BPS_UPPER_LIMIT, "_feeBPS cannot be greater than FEE_BPS_UPPER_LIMIT");
         require(_vault != address(0) && _oft != address(0), "address cannot be zero");
         feeBPS = _feeBPS;
         vault = _vault;
@@ -79,6 +81,7 @@ contract CarvBridge is Ownable {
     }
 
     function updateFeeBPS(uint32 _feeBPS) public onlyOwner {
+        require(_feeBPS <= FEE_BPS_UPPER_LIMIT, "_feeBPS cannot be greater than FEE_BPS_UPPER_LIMIT");
         feeBPS = _feeBPS;
         emit UpdateFeeBPS(msg.sender,_feeBPS);
     }
