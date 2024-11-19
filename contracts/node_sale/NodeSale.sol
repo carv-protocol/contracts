@@ -10,6 +10,7 @@ import "../interfaces/INodeSale.sol";
 
 contract NodeSale is OwnableUpgradeable, IERC721Receiver, INodeSale {
 
+    uint256 public constant ORACLE_ACCEPTABLE_DELAY = 10800;
     uint256 public constant INITIAL_PRICE = 1500e18;
     uint256 public constant PRICE_CHANGE_PER_UNIT = 100e18;
     uint32 public constant UNIT_LENGTH = 1000;
@@ -121,6 +122,7 @@ contract NodeSale is OwnableUpgradeable, IERC721Receiver, INodeSale {
 
         require(answer > 0, "price should be greater than zero");
         require(startedAt > 0 && updatedAt > 0, "timestamp should not be zero");
+        require(updatedAt + ORACLE_ACCEPTABLE_DELAY >= block.timestamp, "stale price");
         require(answeredInRound >= roundID, "answeredInRound should be equal to or greater than roundID.");
 
         return priceUSD * (10**decimals) / uint256(answer);
