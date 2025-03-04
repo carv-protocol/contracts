@@ -5,6 +5,7 @@ const ContractsStaking = ["veCarvs"]
 const ContractsAirdrop = ["Airdrop01", "Airdrop02", "SBT"]
 const ContractsNodeSale = ["NodeSale"]
 const ContractsAggregator = ["CarvAggregator"]
+const ContractsOld = ["Peel", "BatchTransfer"]
 
 function genAbi() {
     fs.access("./artifacts/contracts", (err) => {
@@ -28,7 +29,7 @@ function genAbi() {
                 }
             );
         }
-        console.log("success！");
+        console.log("contracts success！");
     });
 
     fs.access("./artifacts/contracts/staking", (err) => {
@@ -52,7 +53,7 @@ function genAbi() {
                 }
             );
         }
-        console.log("success！");
+        console.log("staking success！");
     });
 
     fs.access("./artifacts/contracts/airdrop", (err) => {
@@ -76,7 +77,7 @@ function genAbi() {
                 }
             );
         }
-        console.log("success！");
+        console.log("airdrop success！");
     });
 
     fs.access("./artifacts/contracts/node_sale", (err) => {
@@ -100,7 +101,7 @@ function genAbi() {
                 }
             );
         }
-        console.log("success！");
+        console.log("node_sale success！");
     });
 
     fs.access("./artifacts/contracts/aggregators", (err) => {
@@ -124,7 +125,31 @@ function genAbi() {
                 }
             );
         }
-        console.log("success！");
+        console.log("aggregators success！");
+    });
+
+    fs.access("./artifacts/contracts/old", (err) => {
+        if (err) {
+            console.log("run this after compile");
+            return
+        }
+
+        if (!fsExistsSync("./abi")) {
+            fs.mkdirSync("./abi");
+        }
+
+        for (let index in ContractsOld) {
+            fs.writeFile(
+                "./abi/" + ContractsOld[index] + ".json",
+                JSON.stringify(require('../artifacts/contracts/old/' + ContractsOld[index] + '.sol/' + ContractsOld[index] + '.json').abi),
+                function (err) {
+                    if (err) {
+                        return console.error(err);
+                    }
+                }
+            );
+        }
+        console.log("old success！");
     });
 }
 
