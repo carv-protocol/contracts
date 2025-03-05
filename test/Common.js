@@ -117,6 +117,26 @@ exports.deployToken2 = async function() {
     return [carv, proxy, owner, alice, bob];
 }
 
+exports.deployToken3 = async function() {
+    const [owner, alice, bob] = await ethers.getSigners();
+
+    const CarvToken = await ethers.getContractFactory("MockCarvToken");
+    const veCarvTokensi = await ethers.getContractFactory("veCarvsi");
+    const Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
+
+    const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
+    const veCarvsi = await veCarvTokensi.deploy();
+
+    let proxy = await Proxy.deploy(veCarvsi.address, owner.address, ethers.utils.toUtf8Bytes(""))
+    proxy = veCarvTokensi.attach(proxy.address)
+    await proxy.initialize("veCARV(si)", "veCARV(si)", carv.address)
+
+    await proxy.setMinLockingDuration(3600*24*30*6);
+    await proxy.setApr(2000);
+
+    return [carv, proxy, owner, alice, bob];
+}
+
 exports.deploySettings = async function deploySettings() {
     const [owner] = await ethers.getSigners();
     const Settings = await ethers.getContractFactory("contracts/Settings.sol:Settings");
