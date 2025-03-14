@@ -83,6 +83,20 @@ exports.signVerification = async function(signer, chainID, attestationID, result
     return sign(signer, chainID, types, value)
 }
 
+exports.deployGovernor = async function() {
+    const [owner, alice, bob] = await ethers.getSigners();
+
+    const CarvVotes = await ethers.getContractFactory("CarvVotes");
+    const TimelockController = await ethers.getContractFactory("TimelockController");
+    const CarvGovernor = await ethers.getContractFactory("CarvGovernor");
+
+    const votes = await CarvVotes.deploy("Votes", "Votes", owner.address, owner.address);
+    const timelock = await TimelockController.deploy(60, [owner.address], [owner.address], owner.address);
+    const governor = await CarvGovernor.deploy("gov", votes.address, timelock.address, 60, 60, 100, 8, owner.address, owner.address);
+
+    return [votes, timelock, governor, owner, alice, bob ];
+}
+
 exports.deployToken = async function() {
     const [owner, alice, bob] = await ethers.getSigners();
 

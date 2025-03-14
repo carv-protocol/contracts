@@ -6,6 +6,7 @@ const ContractsAirdrop = ["Airdrop01", "Airdrop02", "SBT"]
 const ContractsNodeSale = ["NodeSale"]
 const ContractsAggregator = ["CarvAggregator"]
 const ContractsOld = ["Peel", "BatchTransfer"]
+const ContractsGovernance = ["CarvGovernor", "CarvVotes"]
 
 function genAbi() {
     fs.access("./artifacts/contracts", (err) => {
@@ -150,6 +151,30 @@ function genAbi() {
             );
         }
         console.log("old success！");
+    });
+
+    fs.access("./artifacts/contracts/governance", (err) => {
+        if (err) {
+            console.log("run this after compile");
+            return
+        }
+
+        if (!fsExistsSync("./abi")) {
+            fs.mkdirSync("./abi");
+        }
+
+        for (let index in ContractsGovernance) {
+            fs.writeFile(
+                "./abi/" + ContractsGovernance[index] + ".json",
+                JSON.stringify(require('../artifacts/contracts/governance/' + ContractsGovernance[index] + '.sol/' + ContractsGovernance[index] + '.json').abi),
+                function (err) {
+                    if (err) {
+                        return console.error(err);
+                    }
+                }
+            );
+        }
+        console.log("governance success！");
     });
 }
 
