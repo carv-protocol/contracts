@@ -145,9 +145,6 @@ exports.deployToken3 = async function() {
     proxy = veCarvTokensi.attach(proxy.address)
     await proxy.initialize("veCARV(si)", "veCARV(si)", carv.address)
 
-    await proxy.setMinLockingDuration(3600*24*30*6);
-    await proxy.setApr(2000);
-
     return [carv, proxy, owner, alice, bob];
 }
 

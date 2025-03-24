@@ -23,15 +23,6 @@ describe("veCarvsi", function () {
         await expect(proxyAdmin.upgradeAndCall(veCarvsi.address, newImpl.address, hre.ethers.utils.toUtf8Bytes(""))).not.to.be.reverted;
     });
 
-    it("settings", async function () {
-
-        expect(await veCarvsi.minLockingDuration()).to.equal(3600*24*30*6);
-        expect(await veCarvsi.apr()).to.equal(2000);
-
-        await expect(veCarvsi.connect(alice).setMinLockingDuration(100)).to.be.reverted;
-        await expect(veCarvsi.connect(alice).setApr(100)).to.be.reverted;
-    });
-
     it("deposit", async function () {
         await expect(veCarvsi.depositFor(alice.address, E18(1000))).to.be.reverted;
         await carv.approve(veCarvsi.address, E18(100000000))
@@ -44,16 +35,6 @@ describe("veCarvsi", function () {
         console.log(await veCarvsi.balanceOf(alice.address))
         console.log(await veCarvsi.balanceOf(bob.address))
         console.log(await veCarvsi.totalSupply())
-        console.log(await veCarvsi.rewardOf(alice.address))
-
-        await time.increase(30 * 24 * 3600);
-        console.log(await veCarvsi.rewardOf(alice.address))
-
-        await time.increase(30 * 24 * 3600 * 5);
-        console.log(await veCarvsi.rewardOf(alice.address))
-
-        await time.increase(30 * 24 * 3600 * 5);
-        console.log(await veCarvsi.rewardOf(alice.address))
 
     });
 
@@ -64,13 +45,9 @@ describe("veCarvsi", function () {
 
         await expect(veCarvsi.depositFor(alice.address, E18(1000))).not.to.be.reverted;
 
-        await expect(veCarvsi.withdrawFor(alice.address, E18(1000))).to.be.reverted;
-
-        await time.increase(30 * 24 * 3600 * 6);
+        await expect(veCarvsi.withdrawFor(alice.address, E18(1000))).not.to.be.reverted;
 
         await expect(veCarvsi.withdrawFor(alice.address, E18(500))).to.be.reverted;
-
-        await expect(veCarvsi.withdrawFor(alice.address, E18(1000))).not.to.be.reverted;
 
     });
 
