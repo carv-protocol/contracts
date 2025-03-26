@@ -18,3 +18,11 @@ cache
 artifacts
 
 .idea
+.DS_Store
+*/.DS_Store
+oft_scripts/arbitrum_sepolia
+oft_scripts/arbitrum_test_mainnet
+oft_scripts/base_sepolia
+oft_scripts/ethereum_sepolia
+oft_scripts/solana_devnet
+oft_scripts/solana_test_mainnet

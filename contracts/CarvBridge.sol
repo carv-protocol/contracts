@@ -44,7 +44,7 @@ contract CarvBridge is Ownable {
         oft = _oft;
     }
 
-    function quoteSend(uint32 dstEid, uint256 amount) public view returns (uint256) {
+    function quoteSend(uint32 dstEid, bytes32 dstAddress, uint256 amount) public view returns (uint256) {
         require(supportedDstEid[dstEid], "unsupported dstEid");
 
         uint256 fee = amount * feeBPS / FEE_DENOMINATOR;
@@ -54,7 +54,7 @@ contract CarvBridge is Ownable {
 
         SendParam memory sendParam = SendParam({
             dstEid: dstEid,
-            to: bytes32(uint256(uint160(msg.sender))),
+            to: dstAddress,
             amountLD: amountDeductFee,
             minAmountLD: minAmountLD,
             extraOptions: bytes(""),
@@ -67,7 +67,7 @@ contract CarvBridge is Ownable {
         return messageFee.nativeFee;
     }
 
-    function send(uint32 dstEid, uint256 amount) public payable {
+    function send(uint32 dstEid, bytes32 dstAddress, uint256 amount) public payable {
         require(supportedDstEid[dstEid], "unsupported dstEid");
 
         uint256 fee = amount * feeBPS / FEE_DENOMINATOR;
@@ -80,7 +80,7 @@ contract CarvBridge is Ownable {
 
         SendParam memory sendParam = SendParam({
             dstEid: dstEid,
-            to: bytes32(uint256(uint160(msg.sender))),
+            to: dstAddress,
             amountLD: amountDeductFee,
             minAmountLD: minAmountLD,
             extraOptions: bytes(""),

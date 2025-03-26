@@ -44,6 +44,16 @@ module.exports = {
       accounts: [process.env.OFT_PRIVATE_KEY],
       gasPrice: 12000000,
     },
+    arb_bridge: {
+      url: process.env.API_KEY_URL_ARB_ONE,
+      accounts: [process.env.BRIDGE_PRIVATE_KEY],
+      // gasPrice: 12000000,
+    },
+    eth_testnet: {
+      url: process.env.API_KEY_URL_ETH_TESTNET,
+      accounts: [process.env.ETH_TESTNET_PRIVATE_KEY],
+      gasPrice: 20000000000,
+    },
     eth_oft: {
       url: process.env.API_KEY_URL_ETH_MAINNET,
       accounts: [process.env.OFT_PRIVATE_KEY],
@@ -57,6 +67,11 @@ module.exports = {
     base_oft: {
       url: process.env.API_KEY_URL_BASE_MAINNET,
       accounts: [process.env.OFT_PRIVATE_KEY],
+      gasPrice: 10000000,
+    },
+    base_bridge: {
+      url: process.env.API_KEY_URL_BASE_MAINNET,
+      accounts: [process.env.BRIDGE_PRIVATE_KEY],
       gasPrice: 10000000,
     },
     linea_oft_pre: {
