@@ -83,6 +83,20 @@ exports.signVerification = async function(signer, chainID, attestationID, result
     return sign(signer, chainID, types, value)
 }
 
+exports.deployGovernor = async function() {
+    const [owner, alice, bob] = await ethers.getSigners();
+
+    const CarvVotes = await ethers.getContractFactory("CarvVotes");
+    const TimelockController = await ethers.getContractFactory("TimelockController");
+    const CarvGovernor = await ethers.getContractFactory("CarvGovernor");
+
+    const votes = await CarvVotes.deploy("Votes", "Votes", owner.address, owner.address);
+    const timelock = await TimelockController.deploy(60, [owner.address], [owner.address], owner.address);
+    const governor = await CarvGovernor.deploy("gov", votes.address, timelock.address, 60, 60, 100, 8, owner.address, owner.address);
+
+    return [votes, timelock, governor, owner, alice, bob ];
+}
+
 exports.deployToken = async function() {
     const [owner, alice, bob] = await ethers.getSigners();
 
@@ -117,6 +131,23 @@ exports.deployToken2 = async function() {
     return [carv, proxy, owner, alice, bob];
 }
 
+exports.deployToken3 = async function() {
+    const [owner, alice, bob] = await ethers.getSigners();
+
+    const CarvToken = await ethers.getContractFactory("MockCarvToken");
+    const veCarvTokensi = await ethers.getContractFactory("veCarvsi");
+    const Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
+
+    const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
+    const veCarvsi = await veCarvTokensi.deploy();
+
+    let proxy = await Proxy.deploy(veCarvsi.address, owner.address, ethers.utils.toUtf8Bytes(""))
+    proxy = veCarvTokensi.attach(proxy.address)
+    await proxy.initialize("veCARV(si)", "veCARV(si)", carv.address)
+
+    return [carv, proxy, owner, alice, bob];
+}
+
 exports.deploySettings = async function deploySettings() {
     const [owner] = await ethers.getSigners();
     const Settings = await ethers.getContractFactory("contracts/Settings.sol:Settings");
@@ -136,6 +167,32 @@ exports.deploySBT = async function () {
     const SBT = await ethers.getContractFactory("SBT");
     let sbt = await SBT.deploy("SBT", "SBT");
     return [owner, alice, bob, cindy, sbt]
+}
+
+exports.deployNodeSale = async function () {
+    const [owner, receiver, alice, bob] = await ethers.getSigners();
+
+    const Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
+    const CarvToken = await ethers.getContractFactory("MockCarvToken");
+    const Aggregator = await ethers.getContractFactory("Aggregator");
+    const NodeSale = await ethers.getContractFactory("NodeSale");
+    const CarvNft = await ethers.getContractFactory("CarvNft");
+
+    const nft = await CarvNft.deploy("CarvNft", "CarvNft");
+    const carv = await CarvToken.deploy("CARV", "CARV", owner.address);
+    const carvAggregator = await Aggregator.deploy();
+    const ethAggregator = await Aggregator.deploy();
+
+    let nodeSale = await NodeSale.deploy();
+    nodeSale = await Proxy.deploy(nodeSale.address, owner.address, ethers.utils.toUtf8Bytes(""))
+    nodeSale = NodeSale.attach(nodeSale.address)
+    await nodeSale.initialize(carv.address, nft.address)
+
+    await nodeSale.setReceiver(receiver.address)
+    await nodeSale.setOracle(0, carvAggregator.address)
+    await nodeSale.setOracle(1, ethAggregator.address)
+
+    return [owner, receiver, alice, bob, carv, nodeSale, carvAggregator, ethAggregator, nft]
 }
 
 exports.deployVault = async function () {
