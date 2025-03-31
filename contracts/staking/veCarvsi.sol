@@ -31,6 +31,7 @@ contract veCarvsi is AccessControlUpgradeable, MulticallUpgradeable {
 
     event AprSet(uint32 apr);
     event Deposit(address user, address receiver, uint32 positionID, uint256 amount);
+    event ReceiverChanged(address user, uint32 positionID, address receiver);
     event Withdraw(address user, uint32 positionID, uint256 amount, uint256 reward);
 
     function initialize(
@@ -60,6 +61,15 @@ contract veCarvsi is AccessControlUpgradeable, MulticallUpgradeable {
         totalAmount += amount;
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         emit Deposit(user, receiver, userIndexes[user], amount);
+    }
+
+    function changeReceiverAddress(address user, uint32 positionID, address receiver) external onlyRole(WITHDRAW_ROLE) {
+        Position storage position = positions[user][positionID];
+        require(receiver != address(0), "invalid receiver");
+        require(position.receiver != address(0), "empty receiver");
+
+        position.receiver = receiver;
+        emit ReceiverChanged(user, positionID, receiver);
     }
 
     function withdrawFor(address user, uint32 positionID) external onlyRole(WITHDRAW_ROLE) {
