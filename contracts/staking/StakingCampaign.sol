@@ -41,6 +41,13 @@ contract StakingCampaign is ERC1155, Ownable {
         claimed[msg.sender][id] = true;
     }
 
+    function mintTo(uint256 id, address to) external onlyOwner supportedID(id) {
+        require(!claimed[to][id], "already claimed");
+
+        _mint(to, id, 1, "");
+        claimed[to][id] = true;
+    }
+
     function safeBalanceOfAt(address user, uint256 timestamp) internal view returns (uint256) {
         try IveCarvsView(vecarvsAddress).balanceOfAt(user, timestamp) returns (uint val) {
             return val;
