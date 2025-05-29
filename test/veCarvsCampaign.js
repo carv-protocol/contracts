@@ -46,4 +46,16 @@ describe("veCarvsCampaign", function () {
         await expect(stakingCampaign.mint(4)).to.be.reverted;
     });
 
+    it("tokenUri", async function () {
+
+        console.log(await stakingCampaign.uri(1))
+        await expect(stakingCampaign.uri(5)).to.be.reverted;
+
+        console.log(await stakingCampaign.uri(1))
+        await stakingCampaign.setUri("test://")
+
+        console.log(await stakingCampaign.uri(1))
+        await expect(stakingCampaign.uri(5)).to.be.reverted;
+    });
+
 });
