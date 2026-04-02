@@ -1,4 +1,4 @@
-# carv-contracts-alphanet
+# contracts
 
 ```shell
 # install dependencies
