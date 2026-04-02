@@ -1,32 +1,47 @@
 {
-  "name": "carv-contracts-alphanet",
+  "name": "contracts",
   "dependencies": {
     "@chainlink/contracts": "1.1.0",
+    "@layerzerolabs/lz-evm-messagelib-v2": "^3.0.167",
     "@layerzerolabs/lz-evm-oapp-v2": "2.3.29",
+    "@layerzerolabs/lz-evm-protocol-v2": "^3.0.167",
+    "@layerzerolabs/lz-evm-v1-0.7": "^3.0.167",
     "@metaplex-foundation/mpl-token-metadata": "2.5.2",
     "@openzeppelin/contracts": ">=5.0.0",
     "@openzeppelin/contracts-upgradeable": ">=5.0.0",
     "@openzeppelin/hardhat-upgrades": "^1.17.0",
     "bs58": "^6.0.0",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "solidity-bytes-utils": "^0.8.4"
   },
   "devDependencies": {
+    "@dk1a/solidity-stringutils": "0.3.3",
     "@ethersproject/abi": "^5.0.12",
     "@ethersproject/solidity": "^5.0.9",
     "@layerzerolabs/lz-solana-sdk-v2": "^2.3.29",
     "@layerzerolabs/lz-v2-utilities": "^2.3.29",
+    "@nomicfoundation/hardhat-chai-matchers": "^1.0.6",
+    "@nomicfoundation/hardhat-network-helpers": "^1.1.2",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-etherscan": "^3.1.8",
     "@openzeppelin/hardhat-upgrades": "^1.17.0",
     "@solana-developers/helpers": "^2.3.0",
     "@solana/spl-token": "^0.4.8",
     "@solana/spl-token-metadata": "^0.1.4",
     "@solana/web3.js": "^1.95.0",
+    "@typechain/hardhat": "^6.1.6",
+    "@types/chai": "^4.3.20",
+    "@types/mocha": "^10.0.10",
     "chai": "^4.3.6",
     "esrun": "^3.2.26",
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.7.1",
     "hardhat": "^2.22.3",
-    "hardhat-gas-reporter": "^2.1.1"
+    "hardhat-gas-reporter": "^2.1.1",
+    "solidity-coverage": "^0.8.17",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.2"
   },
   "scripts": {
     "test": "mocha"

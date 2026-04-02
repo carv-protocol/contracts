@@ -12,6 +12,7 @@ nodesale_scripts
 
 contracts/test
 contracts/aggregators
+contracts/carv_id
 
 local_test
 
