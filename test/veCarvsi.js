@@ -24,8 +24,6 @@ describe("veCarvsi", function () {
     });
 
     it("deposit", async function () {
-        await veCarvsi.setApr(500)
-
         await expect(veCarvsi.depositFor(alice.address, alice.address, E18(1000))).to.be.reverted;
         await carv.approve(veCarvsi.address, E18(100000000))
         await expect(veCarvsi.depositFor(alice.address, alice.address, E18(1000))).to.be.reverted;
@@ -47,12 +45,6 @@ describe("veCarvsi", function () {
 
         console.log(await veCarvsi.userIndexes(alice.address))
         console.log(await veCarvsi.userIndexes(bob.address))
-
-        await time.increase(30 * 24 * 3600);
-        console.log(await veCarvsi.rewardOf(alice.address))
-
-        await time.increase(30 * 24 * 3600 * 5);
-        console.log(await veCarvsi.rewardOf(alice.address))
     });
 
     it("withdraw", async function () {

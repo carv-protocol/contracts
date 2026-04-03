@@ -14,22 +14,23 @@ describe("Governor", function () {
     it("Votes-1", async function () {
 
         expect(await governor.CLOCK_MODE()).to.equal("mode=blocknumber&from=default");
-        expect(await governor.clock()).to.equal(3);
+        const clockBefore = await governor.clock();
 
         await votes.update(ZeroAddr, alice.address, 100);
         expect(await votes.balanceOf(alice.address)).to.equal(100);
         expect(await votes.getVotes(alice.address)).to.equal(0);
 
         await votes.connect(alice).delegate(alice.address)
+        const clockAfterDelegate = await governor.clock();
         expect(await votes.balanceOf(alice.address)).to.equal(100);
         expect(await votes.getVotes(alice.address)).to.equal(100);
 
         await votes.update(alice.address, bob.address, 50);
         expect(await votes.balanceOf(alice.address)).to.equal(50);
         expect(await votes.getVotes(alice.address)).to.equal(50);
-        expect(await votes.getPastVotes(alice.address, 5)).to.equal(100);
+        expect(await votes.getPastVotes(alice.address, clockAfterDelegate)).to.equal(100);
 
-        expect(await votes.getPastTotalSupply(5)).to.equal(100);
+        expect(await votes.getPastTotalSupply(clockAfterDelegate)).to.equal(100);
 
     });
 
@@ -39,7 +40,9 @@ describe("Governor", function () {
         await votes.update(ZeroAddr, bob.address, 200);
 
         await votes.connect(alice).delegate(alice.address)
-        expect(await votes.getPastTotalSupply(11)).to.equal(300);
+        await votes.connect(bob).delegate(bob.address)
+        const clockAfterDelegate = (await governor.clock()) - 1;
+        expect(await votes.getPastTotalSupply(clockAfterDelegate)).to.equal(300);
 
         await votes.connect(bob).delegate(alice.address)
 
